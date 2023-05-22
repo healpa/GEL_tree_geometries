@@ -1,5 +1,14 @@
 ## Ignore Visual Studio temporary files
 
+
+# Mac-specific 
+*.DS_store
+
+#Xcode-specific (not sure about .xib)
+project.xcworkspace/
+xcuserdata/
+*.xib 
+
 # User-specific files
 *.suo
 *.user
