@@ -67,114 +67,181 @@ namespace Geometry {
         return false;
     }
 
-    AMGraph3D graph_from_points(const string& file_name, double rad, int N_closest)
-    {
-        AMGraph3D g;
-        srand(0);
-        ifstream f(file_name.c_str());
-        string str;
-        getline(f, str);
-        getline(f, str);
-
-    //    ofstream ptsout("/Users/andreas/3DModels/TreeScan/wto.txt");
-        while(f) {
-            string str;
-            getline(f, str);
-            istringstream istr(str);
-            double x,y,z;
-            istr >> x >> y >> z;
-            if(1) {
-                Vec3d p = Vec3d(x,y,z);
-                if(!std::isnan(p[0])) {
-                    g.add_node(p);
-                }
-                else
-                    cout << "nan node not inserted in graph: "  << endl;
+AMGraph3D graph_from_points(const string& file_name, double rad, int N_closest)
+{
+    AMGraph3D g;
+           srand(0);
+           ifstream f(file_name.c_str());
+           string str;
+           getline(f, str);
+           getline(f, str);
+    
+    vector<Vec3d> point_cloud;
+    
+// If the .off file has more columns
+    while (getline(f, str)) {
+        istringstream istr(str);
+        double x, y, z;
+        if (istr >> x >> y >> z) {
+            Vec3d p(x, y, z);
+            point_cloud.push_back(p);
+            if (!isnan(p[0])) {
+                g.add_node(p);
+            } else {
+                cout << "nan node not inserted in graph: " << endl;
             }
+        } else {
+            // Handle error if less than three columns are present
+            break;
         }
-        
-        KDTree<Vec3d, AMGraph3D::NodeID> tree;
-        for(auto n : g.node_ids()) {
-            Vec3d p = g.pos[n];
-            if(std::isnan(p[0]))
-                cout << "nan node inserted in tree: " << n << endl;
-            tree.insert(g.pos[n], n);
-        }
-        
-        tree.build();
-        cout << "Connecting nodes ..." << endl;
-        for(auto n : g.node_ids())
-        {
-            auto nbors = tree.m_closest(N_closest, g.pos[n], rad);
-            for(const auto& nn: nbors)
-                if(nn.v != n)
-                    g.connect_nodes(n, nn.v);
-        }
-        
-//        int cnt = 0;
-//        cout << "Disconnecting nodes ..." << endl;
-//        for(auto n : g.node_ids())
-//        {
-//            auto nbors = tree.m_closest(N_closest, g.pos[n], rad);
-//            if(nbors.size()<5) {
-//                g.remove_node(n);
-//                cnt++;
-//            }
-//    //        else
-//    //        {
-//    //            Vec3d c = g.pos[n];
-//    //            vector<Vec3d> pts;
-//    //            for(const auto& nn: nbors)
-//    //                if(nn.v != n) {
-//    //                    Vec3d p = g.pos[nn.v];
-//    //                    if(std::isnan(p[0])) {
-//    //                        cout << "--- Nan: " << endl;
-//    //                        cout << nn.k << " " << nn.v << " " << nn.d << " " << g.pos[n] << endl;
-//    //                    }
-//    //                    else
-//    //                        pts.push_back(p);
-//    //                }
-//    //            Mat3x3d Cov, Q, L;
-//    //            auto mean = covariance(pts, Cov);
-//    //            int no_eig_sols = power_eigensolution(Cov, Q, L);
-//    //
-//    //            if(no_eig_sols==0) {
-//    //                g.remove_node(n);
-//    //                continue;
-//    //            }
-//    //            else if (no_eig_sols==1) {
-//    //                orthogonal(Q[0], Q[1], Q[2]);
-//    //            }
-//    //            else if (no_eig_sols==2) {
-//    //                Q[2] = normalize(cross(Q[0], Q[1]));
-//    //            }
-//    //
-//    //            Vec3d l(L[0][0], L[1][1], L[2][2]);
-//    //            l += Vec3d(0.1);
-//    //            l /= l.max_coord();
-//    //            for(const auto& nn: nbors) {
-//    //                Vec3d v = (g.pos[nn.v]-mean);
-//    //                if (adjust) {
-//    //                    v = Q * v;
-//    //                    v /= l;
-//    //                }
-//    //                if(length(v)>rad) {
-//    //                    auto N = g.neighbors(n);
-//    //                    if(find(begin(N),end(N),nn.v) != end(N)) {
-//    //                        g.disconnect_nodes(n, nn.v);
-//    //                        ++cnt;
-//    //                    }
-//    //                }
-//    //            }
-//    //        }
-//        }
-//        
-//        cout << "disconnected " << cnt << endl;
-        
-        g = clean_graph(g);
-        
-        return g;
     }
+    
+    KDTree<Vec3d, AMGraph3D::NodeID> tree;
+    for(auto n : g.node_ids()) {
+        Vec3d p = g.pos[n];
+        if(isnan(p[0]))
+            cout << "nan node inserted in tree: " << n << endl;
+        tree.insert(g.pos[n], n);
+    }
+    
+//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+//N_closest = 45;
+//    rad = 0.02;
+//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    
+    tree.build();
+    cout << "Connecting nodes ..." << endl;
+    for(auto n : g.node_ids())
+    {
+        auto nbors = tree.m_closest(N_closest, g.pos[n], rad);
+        
+//        remove content of loop to not connect nodes
+        for(const auto& nn: nbors)
+            if(nn.v != n)
+                g.connect_nodes(n, nn.v);
+//
+    }
+
+
+    
+        
+//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    
+//    int cnt = 0;
+//    cout << "Disconnecting nodes ..." << endl;
+//    for(auto n : g.node_ids())
+//    {
+//        auto nbors = tree.m_closest(N_closest, g.pos[n], rad);
+//   :::::::::::
+//
+//        if(nbors.size()<adjust) {
+//            g.remove_node(n);
+//            cnt++;
+//        }
+//        else
+//        {
+//            Vec3d c = g.pos[n];
+//            vector<Vec3d> pts;
+//            for(const auto& nn: nbors)
+//                if(nn.v != n) {
+//                    Vec3d p = g.pos[nn.v];
+//                    if(isnan(p[0])) {
+//                        cout << "--- Nan: " << endl;
+//                        cout << nn.k << " " << nn.v << " " << nn.d << " " << g.pos[n] << endl;
+//                    }
+//                    else
+//                        pts.push_back(p);
+//                }
+//            Mat3x3d Cov, Q, L;
+//            auto mean = covariance(pts, Cov);
+//            int no_eig_sols = power_eigensolution(Cov, Q, L);
+//
+//            if(no_eig_sols==0) {
+//                g.remove_node(n);
+//                continue;
+//            }
+//            else if (no_eig_sols==1) {
+//                orthogonal(Q[0], Q[1], Q[2]);
+//            }
+//            else if (no_eig_sols==2) {
+//                Q[2] = normalize(cross(Q[0], Q[1]));
+//            }
+//
+//            Vec3d l(L[0][0], L[1][1], L[2][2]);
+//            l += Vec3d(0.1);
+//            l /= l.max_coord();
+//            for(const auto& nn: nbors) {
+//                Vec3d v = (g.pos[nn.v]-mean);
+//                if (adjust) {
+//                    v = Q * v;
+//                    v /= l;
+//                }
+//                if(length(v)>rad) {
+//                    auto N = g.neighbors(n);
+//                    if(find(begin(N),end(N),nn.v) != end(N)) {
+//                        g.disconnect_nodes(n, nn.v);
+//                        ++cnt;
+//                    }
+//                }
+//            }
+//        }
+//
+//        :::::::::::::::
+//
+//    }
+//
+//    cout << "disconnected " << cnt << endl;
+
+    g = clean_graph(g);
+    
+    //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        
+    //    Remove all edges that are not contributing to anything, ie delete edge pointers from branches
+    
+//        cout << "Removing outliers..." << endl;
+//        for(auto n : g.node_ids())
+//           {
+//               float NB = g.neighbors(n).size();
+//               if(NB <= 5) {g.remove_node(n); } //5> fjerne
+//           }
+//
+//    saturate
+    
+//    int hops = 5;
+//    int rad1 = 0.05;
+//
+//    cout << "Saturating..." << endl;
+//
+//    AMGraph3D g2 = g;
+//    double sq_rad = sqr(rad1);
+//    for(auto n0: g.node_ids()) {
+//        queue<NodeID> Q;
+//        Q.push(n0);
+//        Util::AttribVec<NodeID, int> H(g.no_nodes(),-1);
+//        H[n0] = 0;
+//        while(!Q.empty()) {
+//            NodeID n = Q.front();
+//            Q.pop();
+//            int h = H[n];
+//            if(h<hops) {
+//                const auto& N = g.neighbors(n);
+//                for(auto m: N)
+//                    if(H[m]==-1 && g.sqr_dist(n0, m)<sq_rad) //
+//                    {
+//                        g2.connect_nodes(n0, m);
+//                        Q.push(m);
+//                        H[m] = h+1;
+//                    }
+//            }
+//        }
+//
+//    }
+//    g = g2;
+    
+
+    return g;
+}
+
 
 
     bool graph_save_ply(const std::string& fn, const AMGraph3D& g) {
