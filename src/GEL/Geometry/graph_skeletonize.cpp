@@ -1263,7 +1263,7 @@ namespace Geometry {
         return msg;
     }
 
-    ulong thinness_measure(const AMGraph3D &g, uint samples, double quality_noise_level, int optimization_steps) {
+    unsigned long thinness_measure(const AMGraph3D &g, uint samples, double quality_noise_level, int optimization_steps) {
         // Grow separators to determine the median thinness of the model
         // Because we are greedy: all cores belong to this task!
         const int CORES = thread::hardware_concurrency();

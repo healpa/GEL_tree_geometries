@@ -211,7 +211,7 @@ namespace Geometry {
      * @param optimization_steps
      * @return The median size of a sample of separators before trimming.
      */
-    ulong thinness_measure(const AMGraph3D &g, uint samples, double quality_noise_level, int optimization_steps);
+    unsigned long thinness_measure(const AMGraph3D &g, uint samples, double quality_noise_level, int optimization_steps);
 
 }
 #endif /* graph_skeletonize_hpp */
