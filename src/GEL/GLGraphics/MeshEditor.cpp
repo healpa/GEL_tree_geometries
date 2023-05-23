@@ -3,7 +3,7 @@
 //  GEL
 //
 //  Created by J. Andreas Bærentzen on 09/10/13.
-//
+//  modified by Helen A. Pabst on 23/05/2023
 //
 #include <thread>
 #if !defined (WIN32)
@@ -34,6 +34,12 @@
 
 #include <GEL/GLGraphics/VisObj.h>
 
+// ---------- Edits Helen ---------
+#include "graph_util.h"
+#include "graph_skeletonize.h"
+#include "graph_io.h"
+
+// --------------------------------
 using namespace std;
 using namespace CGLA;
 using namespace HMesh;
@@ -2023,6 +2029,80 @@ namespace GLGraphics {
         return vo[active].view_control().shape();
     }
 
+
+// ---------- Edits Helen ----------
+void console_points_to_graph(MeshEditor* me, const std::vector<std::string>& args)
+{
+    string file_name = "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+        
+        // Check if the user provided a file name as input
+        if (args.size() > 0) {
+            file_name = args[0];
+        }
+        else {
+            // Prompt the user for input
+            std::cout << "Enter the path to the point cloud file to load (default: "
+                      << file_name << "): ";
+            std::cin.ignore(); // Ignore any leftover input in the stream
+            std::getline(std::cin, file_name);
+            if (file_name.empty()) {
+                // Use default file name if no input provided
+                file_name = "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+            }
+        }
+    
+    // Read rad from console input or use default value 0.05
+    double rad = 0.05;
+    if (args.size() > 1) {
+        try {
+            rad = std::stod(args[1]);
+        }
+        catch (...) {
+            // Invalid input, using default value
+            std::cout << "Invalid input for rad. Using default value 0.05." << std::endl;
+        }
+    }
+    else {
+        // Prompt the user for input
+        std::cout << "Enter the value for rad (default: 0.05): ";
+        std::cin >> rad;
+    }
+    
+    // Read N_closest from console input or use default value 15
+    int N_closest = 15;
+    if (args.size() > 2) {
+        try {
+            N_closest = std::stoi(args[2]);
+        }
+        catch (...) {
+            // Invalid input, using default value
+            std::cout << "Invalid input for N_closest. Using default value 15." << std::endl;
+        }
+    }
+    else {
+        // Prompt the user for input
+        std::cout << "Enter the value for N_closest (default: 15): ";
+        std::cin >> N_closest;
+    }
+    
+    me->active_visobj().get_graph() = Geometry::graph_from_points(file_name, rad, N_closest);
+}
+
+
+
+
+
+void console_graph_refit(MeshEditor* me, const std::vector<std::string> & args) {
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    auto [c,r] = approximate_bounding_sphere(g);
+    me->refit(c,r);
+}
+
+// ---------------------------------
+
+
+
+
     void MeshEditor::init() {
         glewInit();
         
@@ -2124,6 +2204,12 @@ namespace GLGraphics {
         register_console_function("edit.selected.bridge_faces", console_bridge_faces, "");
 
         register_console_function("test", console_test, "Test some shit");
+        
+        //--------- Edits Helen --------
+        register_console_function("graph.load_pts", console_points_to_graph, "");
+        register_console_function("graph.refit", console_graph_refit, "");
+        
+        //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
         active.reg(theConsole, "active_mesh", "The active mesh");
