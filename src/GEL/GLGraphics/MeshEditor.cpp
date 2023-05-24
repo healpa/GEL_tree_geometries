@@ -2090,13 +2090,33 @@ void console_points_to_graph(MeshEditor* me, const std::vector<std::string>& arg
 
 
 
-
-
 void console_graph_refit(MeshEditor* me, const std::vector<std::string> & args) {
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
     auto [c,r] = approximate_bounding_sphere(g);
     me->refit(c,r);
 }
+
+void console_graph_remove_outliers(MeshEditor* me, const std::vector<std::string> & args) {
+    double nb = 5;
+    if (args.size() > 0) {
+        try {
+            nb = std::stod(args[0]);
+        }
+        catch (...) {
+            // Invalid input, using default value
+            std::cout << "Invalid input for the minimum number of neighbours. Using default value 5." << std::endl;
+        }
+    }
+    else {
+        // Prompt the user for input
+        std::cout << "Enter the value for the minimum number of neighbours(default: 5): ";
+        std::cin >> nb;
+    }
+    
+    remove_outliers_graph(me->active_visobj().get_graph(), nb);
+    
+}
+
 
 // ---------------------------------
 
@@ -2208,6 +2228,7 @@ void console_graph_refit(MeshEditor* me, const std::vector<std::string> & args) 
         //--------- Edits Helen --------
         register_console_function("graph.load_pts", console_points_to_graph, "");
         register_console_function("graph.refit", console_graph_refit, "");
+        register_console_function("graph.remove_outliers", console_graph_remove_outliers, "");
         
         //------------------------------
         

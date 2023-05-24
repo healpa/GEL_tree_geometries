@@ -167,6 +167,22 @@ namespace Geometry {
         return connected_components(g, front_set);
     }
 
+    // -------- Edits Helen -------
+    void remove_outliers_graph(AMGraph3D& g, int nb) {
+        AMGraph3D g2 = g;
+        int count = 0;
+        for(auto n : g2.node_ids())
+           {
+               float nb = g2.neighbors(n).size();
+               if(nb <= 5) {count++; g2.remove_node(n); } //5> fjerne
+           }
+        std::cout << "The value of the variable is: " << count << std::endl;
+        g = g2;
+        
+    }
+      
+    // ----------------------------
+
     void saturate_graph(AMGraph3D& g, int hops, double dist_frac, double rad) {
         AMGraph3D g2 = g;
         using NodeMap = std::map<NodeID, pair<int, double>>;

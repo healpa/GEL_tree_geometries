@@ -43,6 +43,12 @@ namespace Geometry {
     /// Return the attributes in dist_in but negated.
     AttribVecDouble negate_dist(const AMGraph3D& g, const AttribVecDouble& dist_in);
 
+    // --------- Edits Helen --------
+    /// Removing outliers BEFORE procedding with saturating the graph
+    void remove_outliers_graph(AMGraph3D& g, int nb);
+
+    // ------------------------------
+
     /** Add edges to g. For each vertex in g we visit neighbors at a maximum of `hops' graph hops from the original vertex.
      Saturation is here used differently from the conventional graph theoretical usage.. */
     void saturate_graph(AMGraph3D& g, int hops, double dist_frac = 1.0001, double rad = 1e300);
