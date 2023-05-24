@@ -176,7 +176,7 @@ namespace Geometry {
                float nb = g2.neighbors(n).size();
                if(nb <= 5) {count++; g2.remove_node(n); } //5> fjerne
            }
-        std::cout << "The value of the variable is: " << count << std::endl;
+        std::cout << "Number of removed nodes: " << count << std::endl;
         g = g2;
         
     }
