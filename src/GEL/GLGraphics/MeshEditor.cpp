@@ -3,8 +3,9 @@
 //  GEL
 //
 //  Created by J. Andreas Bærentzen on 09/10/13.
-//  modified by Helen A. Pabst on 23/05/2023
+//  modified by Helen A. Pabst on 05/2023
 //
+
 #include <thread>
 #if !defined (WIN32)
 #include <stdarg.h>
@@ -2031,6 +2032,14 @@ namespace GLGraphics {
 
 
 // ---------- Edits Helen ----------
+
+
+void console_clear_graph(MeshEditor* me, const std::vector<std::string> & args)
+{
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g.clear();
+}
+
 void console_points_to_graph(MeshEditor* me, const std::vector<std::string>& args)
 {
     string file_name = "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
@@ -2090,14 +2099,19 @@ void console_points_to_graph(MeshEditor* me, const std::vector<std::string>& arg
 
 
 
+
+
 void console_graph_refit(MeshEditor* me, const std::vector<std::string> & args) {
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
     auto [c,r] = approximate_bounding_sphere(g);
     me->refit(c,r);
 }
 
+
+
+
 void console_graph_remove_outliers(MeshEditor* me, const std::vector<std::string> & args) {
-    double nb = 5;
+    int nb = 5;
     if (args.size() > 0) {
         try {
             nb = std::stod(args[0]);
@@ -2109,7 +2123,7 @@ void console_graph_remove_outliers(MeshEditor* me, const std::vector<std::string
     }
     else {
         // Prompt the user for input
-        std::cout << "Enter the value for the minimum number of neighbours(default: 5): ";
+        std::cout << "Enter the value for the minimum number of neighbours (default: 5): ";
         std::cin >> nb;
     }
     
@@ -2118,6 +2132,57 @@ void console_graph_remove_outliers(MeshEditor* me, const std::vector<std::string
 }
 
 
+
+
+void console_graph_saturate(MeshEditor* me, const std::vector<std::string> & args) {
+    int vt = 5;   // number of nearest vertices to be connected for saturation
+    double dist_frac = 1.0001;
+    double rad = 1e300;
+    if (args.size() > 0) {
+        try {
+            vt = std::stod(args[0]);
+        }
+        catch (...) {
+            // Invalid input, using default value
+            std::cout << "Invalid input for the number of nearest vertices to be connetced. Using default value 5." << std::endl;
+        }
+    }
+    else {
+        // Prompt the user for input
+        std::cout << "Enter the value number of nearest vertices to be connected fo saturation (default: 5): ";
+        std::cin >> vt;
+    }
+    
+    saturate_graph(me->active_visobj().get_graph(), vt, dist_frac, rad);
+}
+
+
+
+
+void console_graph_prune(MeshEditor* me, const std::vector<std::string> & args) {
+    prune(me->active_visobj().get_graph());
+}
+
+
+void console_graph_edge_contract(MeshEditor* me, const std::vector<std::string> & args)
+{
+    int dist_thresh = 0.025;
+    if (args.size() > 0) {
+        try {
+            dist_thresh = std::stod(args[0]);
+        }
+        catch (...) {
+            // Invalid input, using default value
+            std::cout << "Invalid input for the distance threshold for contracting edges. Using default value 0.025." << std::endl;
+        }
+    }
+    else {
+        // Prompt the user for input
+        std::cout << "Enter the distance threshold (will be used in squared form) for contracting edges (default: 0.025): ";
+        std::cin >> dist_thresh;
+    }
+    graph_edge_contract(me->active_visobj().get_graph(), dist_thresh);
+}
 // ---------------------------------
 
 
@@ -2226,9 +2291,13 @@ void console_graph_remove_outliers(MeshEditor* me, const std::vector<std::string
         register_console_function("test", console_test, "Test some shit");
         
         //--------- Edits Helen --------
-        register_console_function("graph.load_pts", console_points_to_graph, "");
-        register_console_function("graph.refit", console_graph_refit, "");
-        register_console_function("graph.remove_outliers", console_graph_remove_outliers, "");
+        register_console_function("graph.0_clear",console_clear_graph,"");
+        register_console_function("graph.1_load_pts", console_points_to_graph, "");
+        register_console_function("graph.2_refit", console_graph_refit, "");
+        register_console_function("graph.3_remove_outliers", console_graph_remove_outliers, "");
+        register_console_function("graph.4_saturate", console_graph_saturate, "");
+        register_console_function("graph.5_prune", console_graph_prune,"");
+        register_console_function("graph.6_edge_contract", console_graph_edge_contract,"");
         
         //------------------------------
         

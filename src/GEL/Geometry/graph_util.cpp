@@ -263,15 +263,21 @@ namespace Geometry {
         auto priority = [&](NodeID a, NodeID b) { return -g.sqr_dist(a,b); };
         priority_queue<SkeletonPQElem> Q;
         
-        int cntr, total_work = 0;
+        // --------- Edits Helen ---------
+        size_t numEdges = g.no_edges();
+        std::cout << "Number of edges before contracting" << numEdges << std::endl;
+        // -------------------------------
+        
+        int cntr, countedges=0, total_work = 0;
         do {
             Util::AttribVec<AMGraph::NodeID, int> touched(g.no_nodes(),0);
             cntr = 0;
             for(auto n0 : g.node_ids()) {
                 for(auto n1: g.neighbors(n0)) {
                     double pri = priority(n0,n1);
-                    if(pri>-sqr(dist_thresh))
+                    if(pri>-sqr(dist_thresh)){
                         Q.push(SkeletonPQElem(pri, n0, n1));
+                    }
                 }
             }
             
@@ -292,6 +298,13 @@ namespace Geometry {
         } while(cntr);
         
         g.cleanup();
+        
+        // --------- Edits Helen ---------
+        size_t numEdgesAfter = g.no_edges();
+        std::cout << "Number of contracted edges: " << countedges << std::endl;
+        std::cout << "Number of edges after contracting" << numEdgesAfter << std::endl;
+        // -------------------------------
+        
         return total_work;
     }
 
