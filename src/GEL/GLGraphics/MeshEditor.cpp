@@ -2183,6 +2183,46 @@ void console_graph_edge_contract(MeshEditor* me, const std::vector<std::string> 
     }
     graph_edge_contract(me->active_visobj().get_graph(), dist_thresh);
 }
+
+
+
+
+void console_local_separators(MeshEditor* me, const std::vector<std::string> & args)
+{
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    
+    Geometry::SamplingType sampling = Geometry::SamplingType::None;  // Set the desired SamplingType value here
+    
+    double quality_noise_level = console_arg(args, 1, 0.09);
+    int optimization_steps = console_arg(args, 1, 0);
+    int advanced_sampling_threshold = console_arg(args, 2, 64);
+    
+    Geometry::NodeSetVec node_set_vec_global = local_separators(g, sampling, quality_noise_level, optimization_steps, advanced_sampling_threshold);
+    // old
+    // Geometry::NodeSetVec node_set_vec_global =local_separators(g, sample_fraction, persistence_threshold, normalize, closure, quality_noise_level);
+
+    // new
+    // local_separators(AMGraph3D &g, SamplingType sampling, double quality_noise_level, int optimization_steps, uint advanced_sampling_threshold)
+}
+
+void console_load_graph(MeshEditor* me, const std::vector<std::string> & args) {
+    string file_name = args.size() == 0 ? "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/winter_tree_0.02_15_saturate_5_0.05_edge_contract_0.025.graph" : args[0];
+    int chose = console_arg(args, 0, 0);
+
+    // Prompt the user to choose between the default graph or entering a file path
+    std::cout << "Load the default graph: " << file_name << "? (Y/N): ";
+    std::string choice;
+    std::getline(std::cin, choice);
+
+    if (choice.empty() || choice == "Y" || choice == "y") {
+        me->active_visobj().get_graph() = Geometry::graph_load(file_name);
+    } else {
+        std::cout << "Enter a file path to load the graph: ";
+        std::getline(std::cin, file_name);
+        me->active_visobj().get_graph() = Geometry::graph_load(file_name);
+    }
+}
+
 // ---------------------------------
 
 
@@ -2292,13 +2332,14 @@ void console_graph_edge_contract(MeshEditor* me, const std::vector<std::string> 
         
         //--------- Edits Helen --------
         register_console_function("graph.0_clear",console_clear_graph,"");
-        register_console_function("graph.1_load_pts", console_points_to_graph, "");
+        register_console_function("graph.1a_load_pts", console_points_to_graph, "");
+        register_console_function("graph.1b_load_graph", console_load_graph, "");
         register_console_function("graph.2_refit", console_graph_refit, "");
         register_console_function("graph.3_remove_outliers", console_graph_remove_outliers, "");
         register_console_function("graph.4_saturate", console_graph_saturate, "");
         register_console_function("graph.5_prune", console_graph_prune,"");
         register_console_function("graph.6_edge_contract", console_graph_edge_contract,"");
-        
+        register_console_function("graph.7_local_separators", console_local_separators,"");
         //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
