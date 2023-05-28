@@ -2185,7 +2185,7 @@ void console_graph_edge_contract(MeshEditor* me, const std::vector<std::string> 
 }
 
 
-
+Geometry::NodeSetVec node_set_vec_global;
 
 void console_local_separators(MeshEditor* me, const std::vector<std::string> & args)
 {
@@ -2197,7 +2197,7 @@ void console_local_separators(MeshEditor* me, const std::vector<std::string> & a
     int optimization_steps = console_arg(args, 1, 0);
     int advanced_sampling_threshold = console_arg(args, 2, 64);
     
-    Geometry::NodeSetVec node_set_vec_global = local_separators(g, sampling, quality_noise_level, optimization_steps, advanced_sampling_threshold);
+    node_set_vec_global = local_separators(g, sampling, quality_noise_level, optimization_steps, advanced_sampling_threshold);
     // old
     // Geometry::NodeSetVec node_set_vec_global =local_separators(g, sample_fraction, persistence_threshold, normalize, closure, quality_noise_level);
 
@@ -2221,6 +2221,15 @@ void console_load_graph(MeshEditor* me, const std::vector<std::string> & args) {
         std::getline(std::cin, file_name);
         me->active_visobj().get_graph() = Geometry::graph_load(file_name);
     }
+}
+
+void console_LS_to_skeleton(MeshEditor* me, const std::vector<std::string>& args)
+{
+    int merge = console_arg(args, 0, 1);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    std::pair<Geometry::AMGraph3D, Util::AttribVec<Geometry::AMGraph3D::NodeID, Geometry::AMGraph3D::NodeID>> result =
+        skeleton_from_node_set_vec(g, node_set_vec_global, merge);
+    g = result.first; // Assign the updated graph to the original reference
 }
 
 // ---------------------------------
@@ -2340,6 +2349,7 @@ void console_load_graph(MeshEditor* me, const std::vector<std::string> & args) {
         register_console_function("graph.5_prune", console_graph_prune,"");
         register_console_function("graph.6_edge_contract", console_graph_edge_contract,"");
         register_console_function("graph.7_local_separators", console_local_separators,"");
+        register_console_function("graph.8.LS_to_skeleton", console_LS_to_skeleton,"");
         //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
