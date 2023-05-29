@@ -2033,12 +2033,54 @@ namespace GLGraphics {
 
 // ---------- Edits Helen ----------
 
-
 void console_clear_graph(MeshEditor* me, const std::vector<std::string> & args)
 {
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
     g.clear();
 }
+
+bool endsWith(const std::string& str, const std::string& suffix) {
+    if (str.length() >= suffix.length()) {
+        return (str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0);
+    }
+    return false;
+}
+
+void console_save_graph(MeshEditor* me, const std::vector<std::string>& args) {
+    std::string file_name;
+    std::string save_folder = "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/";
+    
+    if (args.empty()) {
+        std::cout << "Enter a name for the saved file: ";
+        std::cin >> file_name;
+    } else {
+        file_name = args[0];
+    }
+
+    if (!endsWith(file_name, ".graph")) {
+        file_name += ".graph";
+    }
+
+    std::string choice;
+    std::cout << "Do you want to save to the default folder (" << save_folder << ")? [Y/N]: ";
+    std::cin >> choice;
+    
+    if (choice == "N" || choice == "n") {
+        std::cout << "Enter the path to the folder where you want to save the file: ";
+        std::cin >> save_folder;
+        
+        // Ensure that the save_folder ends with a directory separator
+        if (save_folder.back() != std::filesystem::path::preferred_separator) {
+            save_folder += std::filesystem::path::preferred_separator;
+        }
+    }
+    
+    std::string full_file_path = save_folder + file_name;
+
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    graph_save(full_file_path, g);
+}
+
 
 void console_points_to_graph(MeshEditor* me, const std::vector<std::string>& args)
 {
@@ -2207,7 +2249,7 @@ void console_local_separators(MeshEditor* me, const std::vector<std::string> & a
 
 void console_load_graph(MeshEditor* me, const std::vector<std::string> & args) {
     string file_name = args.size() == 0 ? "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/winter_tree_0.02_15_saturate_5_0.05_edge_contract_0.025.graph" : args[0];
-    int chose = console_arg(args, 0, 0);
+   
 
     // Prompt the user to choose between the default graph or entering a file path
     std::cout << "Load the default graph: " << file_name << "? (Y/N): ";
@@ -2231,6 +2273,15 @@ void console_LS_to_skeleton(MeshEditor* me, const std::vector<std::string>& args
         skeleton_from_node_set_vec(g, node_set_vec_global, merge);
     g = result.first; // Assign the updated graph to the original reference
 }
+
+void console_root_clean_up(MeshEditor* me, const std::vector<std::string> & args)
+{
+//    double root_width = console_arg(args, 0, 0.5);
+//    double s = console_arg(args, 0, 1);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g  = bottom_node(g);
+}
+
 
 // ---------------------------------
 
@@ -2341,6 +2392,7 @@ void console_LS_to_skeleton(MeshEditor* me, const std::vector<std::string>& args
         
         //--------- Edits Helen --------
         register_console_function("graph.0_clear",console_clear_graph,"");
+        register_console_function("graph.00_save",console_save_graph,"");
         register_console_function("graph.1a_load_pts", console_points_to_graph, "");
         register_console_function("graph.1b_load_graph", console_load_graph, "");
         register_console_function("graph.2_refit", console_graph_refit, "");
@@ -2350,6 +2402,7 @@ void console_LS_to_skeleton(MeshEditor* me, const std::vector<std::string>& args
         register_console_function("graph.6_edge_contract", console_graph_edge_contract,"");
         register_console_function("graph.7_local_separators", console_local_separators,"");
         register_console_function("graph.8.LS_to_skeleton", console_LS_to_skeleton,"");
+        register_console_function("graph.9.root_clean_up", console_root_clean_up,"");
         //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
