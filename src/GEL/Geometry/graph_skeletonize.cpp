@@ -1297,4 +1297,123 @@ namespace Geometry {
 
         return median_growth_measure;
     }
+
+// --------- Edits Helen --------
+
+double angle_z_axis(Geometry::AMGraph3D& g, NodeID one, NodeID two){
+    //n = bottom node (one), nb = edge node (two), c = +1 z direction node
+    
+    auto xn = g.pos[one][0];
+    auto xnb = g.pos[two][0];
+    auto xc = xn;
+    auto yn = g.pos[one][1];
+    auto ynb = g.pos[two][1];
+    auto yc = yn;
+    auto zn = g.pos[one][2];
+    auto znb = g.pos[two][2];
+    auto zc = zn + 0.5;
+
+
+    // edge direction
+    auto xb = xnb-xn;
+    auto yb = ynb-yn;
+    auto zb = znb-zn;
+
+    //z direction direction
+    auto xcd = xc-xn;
+    auto ycd = yc-yn;
+    auto zcd = zc-zn;
+
+    auto length_b = sqrt(xb*xb + yb*yb + zb*zb);
+    auto length_c = sqrt(xcd*xcd + ycd*ycd + zcd*zcd);
+
+//    cout << "length b and c: " << length_b << " " << length_c <<  endl;
+
+    auto dot_p = ((xb/length_b)*(xcd/length_c) + (yb/length_b)*(xcd/length_c) + (zb/length_b)*(zcd/length_c));
+
+    auto length_b_unit = sqrt((xb/length_b)*(xb/length_b) + (yb/length_b)*(yb/length_b) + (zb/length_b)*(zb/length_b));
+    auto length_c_unit = sqrt((xcd/length_c)*(xcd/length_c) + (ycd/length_c)*(ycd/length_c) + (zcd/length_c)*(zcd/length_c));
+    
+    auto angle = (acos(dot_p/(length_b_unit*length_c_unit))*180)/3.141592;
+    
+    return angle;
+    
+}
+
+
+AMGraph3D bottom_node(Geometry::AMGraph3D& g){
+    
+    //Fnding z-values and the lowest edges
+    
+    vector<double> z_values;
+    vector<double> z_values_low;
+    vector<NodeID> z_values_low_index;
+    vector<double> ave_radius;
+
+    //Loading z-coordinates into vector
+    for(auto i: g.node_ids()){
+        z_values.push_back(g.pos[i][2]);
+       // cout << g.pos[i][2] << " ";
+     }
+    //cout << "Stop" << endl;
+      
+    //Sort the z values and find the X lowest nodes
+    int X = 30;
+    for(int i = 0; i < X; i++){
+        double min = 1000;
+        NodeID index;
+        for(int j = 0; j < z_values.size(); j++){
+            if(z_values[j] < min){
+                min = z_values[j];
+                index = j;
+            }
+        }
+        z_values_low.push_back(min);
+        z_values_low_index.push_back(index);
+        z_values[index] += 10;
+        g.node_color[index] = Vec3f(1, 0, 0);
+    }
+    
+    int I = 0;
+    NodeID root;
+    for(int i = 0; i < z_values_low.size(); i++){
+        double angle = 1000;
+        auto NB = g.neighbors(z_values_low_index[i]);
+        for(auto j: NB){
+            if(g.pos[j][2] > z_values_low[i]){ //If the NB is a higher z value, find angle of edge relative to z-axis
+                angle = angle_z_axis(g, z_values_low_index[i], j);
+                
+                g.node_color[z_values_low_index[i]] = Vec3f(0, 0, 1);
+                
+                if(angle < 45){
+                    I += 1;
+                    
+                    g.node_color[z_values_low_index[i]] = Vec3f(0, 1, 0); //Color the bottom node of the "vertical edge green"
+                    
+                    root = z_values_low_index[i];
+                    
+                    cout << "Found root-node " << z_values_low_index[i] << endl;
+                    
+                }
+            }
+        }
+        
+        //Set limit for how many edge should be found
+        if(I > 0){
+            break;
+        }
+    }
+
+    vector<NodeID> remove;
+    for(int i = 0; i < z_values_low_index.size(); i++){
+        if(g.pos[z_values_low_index[i]][2] < g.pos[root][2]){
+            g.remove_node(z_values_low_index[i]);
+        }
+    }
+    
+    
+    return g;
+}
+
+// ------------------------------
 }

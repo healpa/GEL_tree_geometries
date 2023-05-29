@@ -213,5 +213,9 @@ namespace Geometry {
      */
     unsigned long thinness_measure(const AMGraph3D &g, uint samples, double quality_noise_level, int optimization_steps);
 
+// -------- Edits Helen --------
+Geometry::AMGraph3D bottom_node(Geometry::AMGraph3D& g);
+// -----------------------------
+
 }
 #endif /* graph_skeletonize_hpp */
