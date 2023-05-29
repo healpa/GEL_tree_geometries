@@ -27,46 +27,60 @@ namespace Geometry {
     using NodeID = AMGraph::NodeID;
     using NodeSet = AMGraph::NodeSet;
 
-    AMGraph3D graph_load(const string& file_name) {
-        ifstream ifs(file_name);
-        AMGraph3D g;
-        while(ifs) {
-            string str;
-            getline(ifs, str);
-            istringstream istr(str);
-            char c;
-            if(str[0] == 'n') {
-                double x,y,z;
-                istr >> c >> x >> y >> z;
-                NodeID n = g.add_node(Vec3d(x,y,z));
-                if(double r; istr >> r)
-                    g.node_color[n][1] = r;
+
+// ----- Edits Helen -----
+AMGraph3D graph_load(const std::string& file_name) {
+    std::ifstream ifs(file_name);
+    AMGraph3D g;
+    while (ifs) {
+        std::string str;
+        getline(ifs, str);
+        std::istringstream istr(str);
+        char c;
+        if (str[0] == 'n') {
+            double x, y, z;
+            istr >> c >> x >> y >> z;
+            NodeID n = g.add_node(Vec3d(x, y, z));
+            if (istr >> x >> y >> z) {
+                g.node_color[n] = Vec3f(x, y, z);
             }
-            else if(str[0] == 'c') {
-                int n0, n1;
-                istr >> c >> n0 >> n1;
-                g.connect_nodes(n0, n1);
+        } else if (str[0] == 'c') {
+            int n0, n1;
+            istr >> c >> n0 >> n1;
+            g.connect_nodes(n0, n1);
+        }
+    }
+    return g;
+}
+
+
+
+
+
+bool graph_save(const std::string& file_name, const Geometry::AMGraph3D& g) {
+    std::ofstream ofs(file_name);
+
+    if (ofs) {
+        for (auto n : g.node_ids()) {
+            ofs << "n " << g.pos[n][0] << " " << g.pos[n][1] << " " << g.pos[n][2] << " " << g.node_color[n][0] << " " << g.node_color[n][1] << " " << g.node_color[n][2] << std::endl;
+        }
+
+        for (auto n : g.node_ids()) {
+            for (auto m : g.neighbors(n)) {
+                if (n < m) {
+                    ofs << "c " << n << " " << m << std::endl;
+                }
             }
         }
-        return g;
+
+        return true;
     }
 
-    bool graph_save(const string& file_name, const Geometry::AMGraph3D& g) {
-        ofstream ofs(file_name);
-        
-        if(ofs) {
-            for(auto n: g.node_ids())
-                ofs << "n " << g.pos[n][0] << " " << g.pos[n][1] << " "<< g.pos[n][2] << " "<< endl;
-            
-            for(auto n: g.node_ids())
-                for(auto m: g.neighbors(n))
-                    if (n < m)
-                        ofs << "c " << n << " " << m << endl;
-            return true;
-        }
-        return false;
-    }
+    return false;
+}
 
+
+// ------- Edits Helen -------
 AMGraph3D graph_from_points(const string& file_name, double rad, int N_closest)
 {
     AMGraph3D g;
