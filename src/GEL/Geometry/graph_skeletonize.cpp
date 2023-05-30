@@ -15,6 +15,7 @@
 #include <iostream>
 #include <random>
 #include <chrono>
+#include <forward_list>
 #include <GEL/Util/AttribVec.h>
 #include <GEL/Geometry/Graph.h>
 #include <GEL/Geometry/graph_util.h>
@@ -1414,6 +1415,713 @@ AMGraph3D bottom_node(Geometry::AMGraph3D& g){
     
     return g;
 }
+
+
+NodeID bottom_node_return(Geometry::AMGraph3D& g){
+    
+    //Fnding z-values and the lowest edges
+    
+    vector<double> z_values;
+    vector<double> z_values_low;
+    vector<NodeID> z_values_low_index;
+
+    //Loading z-coordinates into vector
+    for(auto i: g.node_ids()){
+        z_values.push_back(g.pos[i][2]);
+        cout << g.pos[i][2] << " ";
+     }
+    cout << "Stop" << endl;
+      
+    //Sort the z values and find the X lowest nodes
+    int X = 30;
+    for(int i = 0; i < X; i++){
+        double min = 1000;
+        NodeID index;
+        for(int j = 0; j < z_values.size(); j++){
+            if(z_values[j] < min){
+                min = z_values[j];
+                index = j;
+            }
+        }
+        z_values_low.push_back(min);
+        z_values_low_index.push_back(index);
+        z_values[index] += 10;
+        g.node_color[index] = Vec3f(1, 0, 0);
+    }
+    
+    int I = 0;
+    NodeID root_node;
+    for(int i = 0; i < z_values_low.size(); i++){
+        double angle = 1000;
+        auto NB = g.neighbors(z_values_low_index[i]);
+        for(auto j: NB){
+            if(g.pos[j][2] > z_values_low[i]){ //If the NB is a higher z value, find angle of edge relative to z-axis
+                angle = angle_z_axis(g, z_values_low_index[i], j);
+                
+                
+                if(angle < 45){
+                    I += 1;
+                    
+                    g.node_color[z_values_low_index[i]] = Vec3f(0, 1, 0); //Color the bottom node of the "vertical edge green"
+                    
+                    root_node = z_values_low_index[i];
+                }
+            }
+        }
+        
+        //Set limit for how many edge should be found
+        if(I > 0){
+            break;
+        }
+    }
+    
+    
+    vector<NodeID> remove;
+    for(int i = 0; i < z_values_low_index.size(); i++){
+        if(g.pos[z_values_low_index[i]][2] < g.pos[root_node][2]){
+            g.remove_node(z_values_low_index[i]);
+        }
+    }
+
+    cout << "root_node: " << root_node << endl;
+    
+    
+    
+    return root_node;
+}
+
+
+//Find distances to all nodes
+pair<AttribVec<NodeID, int>,AttribVec<NodeID, NodeID>> distance_to_all_nodes(Geometry::AMGraph3D& g){
+    
+//        NodeID s = skel_root_node(g);  //for branch 22
+        NodeID s = bottom_node_return(g); // for normal
+        NodeID next;
+        int walking = 0;
+        NodeID crossings = s; // should be equal to S, which is the starting vertex
+          
+        Util::AttribVec<NodeID, int> dist(g.no_nodes(),0);
+        Util::AttribVec<NodeID, NodeID> pred(g.no_nodes(),0);
+        Util::AttribVec<NodeID, NodeID> prev_crossing(g.no_nodes(),0);
+        Util::AttribVec<NodeID, int> cross_dist(g.no_nodes(),0);
+        
+        queue<NodeID> Q;
+        forward_list<NodeID> cross_node_Q{};
+         
+        dist[crossings] = 0; //dist to start vertex is 0
+        Q.push(crossings); // start vertex
+        
+        
+        while(!Q.empty()){
+            auto u = Q.front();
+            Q.pop();
+            auto no_NB = g.neighbors(u).size();
+//            cout << no_NB << " no of NB" << endl;
+            
+    //        g.node_color[u] = Vec3f(1,0,0);
+
+//            straight branch
+//            if(u  == s && dist[u] == 0){
+
+//
+//                cout <<"found start vertex " << endl;
+//                NodeID t;
+//                for(auto w: g.neighbors(u)){ t = w; }
+//                Q.push(t);
+//                cross_node_Q.push_front(u);
+//                next = t;
+//                dist[u] = 1;
+//                pred[next] = u;
+//                walking += 1;
+//
+//            }
+            
+            if(no_NB == 2){
+                 int check = 0;
+                for(auto t: g.neighbors(u)){ //go in the  right direction, the one notvisited before
+                    if(dist[t] == 0){
+//                        cout << "At a straight edge part " << endl;
+                        Q.push(t);
+                        next = t;
+                    }
+                    else if(dist[t] != 0){
+                        check += 1;
+                    }
+
+                }
+                dist[u] = dist[pred[u]] + 1;
+                pred[next] = u;
+                walking += 1;
+                if(check == no_NB){
+                    auto q = cross_node_Q.front();
+                    cross_node_Q.pop_front();
+                    cross_dist[q] += walking;
+                    Q.push(q);
+                    walking = 0;
+//                    cout << "Hopping, found no avaliable paths in straight branch" << endl;
+                }
+
+            }
+            
+            //at a crossing
+            else if(no_NB > 2){
+//                cout << "At a crossing " << endl;
+                int check = 0;
+                for(auto t: g.neighbors(u)){ //go in a direction in the crossing we havent been before
+                    if(dist[t] == 0){
+//                        cout << "Going in a direction from the crossing " << endl;
+                        cross_node_Q.push_front(u);
+                        Q.push(t);
+                        pred[t] = u;
+                        dist[u] = dist[pred[u]] + 1;
+                        prev_crossing[u] = crossings;
+                        cross_dist[u] += walking;
+                        walking = 0;
+                        crossings = u;
+                        break;
+                    }
+                    //If we are at a crossing where all branches have been meet
+                    else if(dist[t] != 0){
+                        check += 1;
+                        if(check == no_NB){
+                            if(cross_node_Q.empty()){ //if we have visited the whole tree then stop
+                                break;
+                            }
+//                            cout << "last root we see " << u << endl;
+                            auto q = cross_node_Q.front();
+                            cross_node_Q.pop_front();
+                            cross_dist[q] += cross_dist[u];
+                            Q.push(q);
+//                            cout << "hopping back" << endl;
+                        }
+
+                    }
+                }
+            }
+
+            //at branch ends or the start vertex
+            else if (no_NB == 1){
+                // If the vertex is the start vertex S
+                //go in the  right direction, the one not visited before
+                if(u == s ){ //should be start vertex S
+//                    cout <<"found start vertex " << endl;
+                    NodeID t;
+                    for(auto w: g.neighbors(u)){ t = w; }
+                    Q.push(t);
+                    next = t;
+                    dist[u] = 1;
+                    pred[next] = u;
+                    walking += 1;
+                }
+                else if(1 == 1){
+                    // if the vertex is a end of a branch
+//                    cout << "at the end of a branch " << endl;
+                    dist[u] = dist[pred[u]] + 1;
+                    
+                    auto q = cross_node_Q.front();
+                    cross_node_Q.pop_front();
+                    cross_dist[q] += walking;
+                    Q.push(q);
+                    walking = 0;
+                }
+                
+         
+                
+            }
+        }
+    return make_pair(dist,pred);
+}
+
+AMGraph3D attach_branches(Geometry::AMGraph3D& g, double connect_dist){
+    
+    auto a_pair = distance_to_all_nodes(g); //Function finding all distances
+    auto dist = a_pair.first;
+
+    //:------------------------------------------------------------:
+
+    //Create a tree, so we can use m_closest to  estimate distances and connect lose branches
+    KDTree<Vec3d, AMGraph3D::NodeID> tree_skeleton;
+    KDTree<Vec3d, AMGraph3D::NodeID> tree_branches;
+
+    vector<NodeID> loose;
+    Util::AttribVec<NodeID, int> loose_seen(g.no_nodes(),0);  //part of the big skeleton, 0 loose branch, 1 has ben searched
+    
+    //Color all nodes that can not be reached red
+    NodeID lose_nodes = 0;
+    NodeID connected_nodes = 0;
+    for(auto i = 0; i < g.no_nodes(); i++ ) {
+        if(dist[i] == 0){
+            g.node_color[i] = Vec3f(1,0,0);
+            lose_nodes += 1;
+    
+            //Create a vector with these LOOSE nodes
+            loose.push_back(i);
+            tree_branches.insert(g.pos[i], i);
+        }
+        else{
+            connected_nodes += 1;
+            tree_skeleton.insert(g.pos[i], i);
+           }
+    }
+    
+    tree_skeleton.build();
+    tree_branches.build();
+    
+    
+    //vector<int> single_branches;
+    queue<NodeID> q; //the queue
+    queue<NodeID> branch; //the current branch
+    
+    //Distance statistics
+    int no_connections = 0;
+    double ave_dist_total = 0;
+    vector<double> median_dist;
+    
+    
+//    go through each  component WITH NO CROSSINGS -> the simple ones
+    for(auto s: loose){
+        //swap(branch, empty); //clear the queue
+    
+        //empty branch
+        while(!branch.empty()){
+            branch.pop();
+        }
+    
+        //check if s seen before -> if yes, then break
+        if(loose_seen[s] == 0){
+            vector<NodeID> remember_branch;
+            loose_seen[s] = 1;
+    
+            //make a queue
+            q.push(s);
+            branch.push(s);
+    
+            //If we see a crossing
+            int NB_is_3 = 0;
+
+            //while
+            while(!q.empty()){
+                //go through s's branch, start over if found a crossing
+                //otherwise save the branch as we loop in a new queue, and color green when we end
+                auto current = q.front();
+                q.pop();
+                auto NB = g.neighbors(current).size();
+                loose_seen[current] = 1;
+    
+                branch.push(current);
+                //Then pass on to the next neighbour and check again
+                for(auto t: g.neighbors(current)){
+                    if(loose_seen[t] == 0){ //if we havent seen the NB before, add to queue
+                        q.push(t);
+                    }
+                }
+    
+                if(NB > 2){
+                    NB_is_3 = 1;
+                    }
+
+                if(q.empty() ){ // ************ && NB_is_3 == 0
+                    cout << "NEW BRANCH"  << endl;
+                    //If the queue is empty (finished the branch), we color this branch
+                        
+                    vector<NodeID> critical_nodes; //Check these nodes in the branch for the closest NB
+                    double branch_internal_angle = 1000;
+                    double internal_angle = 0;
+                    NodeID add_critical_node = 0;
+                        
+                    while(!branch.empty()){
+                        NodeID node = branch.front();
+                        branch.pop();
+    
+                        remember_branch.push_back(node);
+ 
+                        //________________________
+                        //Check the branch for critical changes in direction
+                        vector<NodeID> neighbours; //NB for each  nodes
+                        
+                        auto NB_size = g.neighbors(node).size();
+                        cout << "*************************************** The size of the NB  " << NB_size << endl;
+                            
+                        //If the node has NB=1 then just add to critical_nodes
+                        if(NB_size == 1){
+                            critical_nodes.push_back(node);
+                        }
+                            
+                        //Find the node with NB=2 (if any) that has the smallest angle
+                        //If this angle is considered small enough (the branchis  not  straight), then  add that to
+                        //critical_nodes as well
+                        if(NB_size > 1){
+                                
+                            //All crossings in the complex branches should be  consideres
+                            if(NB_size > 2 && NB_is_3 == 1){
+                                critical_nodes.push_back(node);
+                            }
+                                
+                            //Add the  neightbours to a vector
+                            for(auto j: g.neighbors(node)){
+                                neighbours.push_back(j);
+                            }
+                                
+                            cout << "__________________________ The size of the NB vector " << neighbours.size() << endl;
+                                
+                            //n = node, nb = node NB, c = connect node
+                            auto xn = g.pos[node][0];
+                            auto xnb = g.pos[neighbours[0]][0];
+                            auto xc = g.pos[neighbours[1]][0];
+                            auto yn = g.pos[node][1];
+                            auto ynb = g.pos[neighbours[0]][1];
+                            auto yc = g.pos[neighbours[1]][1];
+                            auto zn = g.pos[node][2];
+                            auto znb = g.pos[neighbours[0]][2];
+                            auto zc = g.pos[neighbours[1]][2];
+
+                            double xb = xnb-xn;
+                            double yb = ynb-yn;
+                            double zb = znb-zn;
+
+                            // connect direction
+                            double xcd = xc-xn;
+                            double ycd = yc-yn;
+                            double zcd = zc-zn;
+
+                            double length_b = sqrt(xb*xb + yb*yb + zb*zb);
+                            double length_c = sqrt(xcd*xcd + ycd*ycd + zcd*zcd);
+                                           
+                            double dot_p = ((xb/length_b)*(xcd/length_c) + (yb/length_b)*(xcd/length_c) + (zb/length_b)*(zcd/length_c));
+
+                            double length_b_unit = sqrt((xb/length_b)*(xb/length_b) + (yb/length_b)*(yb/length_b) + (zb/length_b)*(zb/length_b));
+                            double length_c_unit = sqrt((xcd/length_c)*(xcd/length_c) + (ycd/length_c)*(ycd/length_c) + (zcd/length_c)*(zcd/length_c));
+
+                            internal_angle = (acos(dot_p/(length_b_unit*length_c_unit))*180)/3.141592;
+                                
+                            cout << "WE FOUND AN INTERNAL ANGLE_________________" << internal_angle << endl;
+                                
+                            //Find the smallest internal angle in the branch for STRAIGHT BRANCHES
+                            if(internal_angle < branch_internal_angle && NB_is_3 == 0){
+                                cout << "WE connect_ *****   _" << internal_angle << endl;
+                                branch_internal_angle = internal_angle;
+                                add_critical_node = node; //neighbours[1]
+                                critical_nodes.push_back(add_critical_node); /// Just added as a test
+                            }
+                                
+                            //Find the critical angles for COMPLEX BRANCHES
+                            if(internal_angle < 90 && NB_is_3 == 1){
+                                critical_nodes.push_back(node);
+                                g.node_color[node] = Vec3f(0,1,0);
+                            }
+                        }
+                           
+                        //________________________
+                    } //End while for going through the empty branch
+                        
+                    //If the angle is consideres a direction of change (angle < 140 deg) then we consider this node as well
+                    if(branch_internal_angle < 130 && NB_is_3 == 0){
+                        if(branch_internal_angle <= 90){ //If the angle moreover is smaller than 90deg, it shall choose this node only
+//                            while(!critical_nodes.empty()){
+//                                critical_nodes.pop_back();
+//                            }
+                        }
+                        critical_nodes.push_back(add_critical_node);
+                        g.node_color[add_critical_node] = Vec3f(0,1,0);
+                    }
+  
+
+//                  _____________________________
+//                  WE HAVE FOUND THE CRITICAL NODES ABOVE
+//                  NOW WE WILL DECIDE WHICH ONE TO CONNECT TO
+                    
+                    NodeID closest_node = 0; //the node in the   branch that is choosen
+                    NodeID connect_node = 0; //the node in the big skeleton we prefer
+                    double min_dist = 10000;
+                    double pred_dist = 10000;
+                    double best_angle = 0; //0
+                    double angle = 0;
+                        
+                    for(auto n: critical_nodes){ //g.neighbors(node).size() == 1
+                        cout << "ONE NB node found"  << endl;
+                        g.node_color[n] = Vec3f(0,1,0);
+                        int N_closest = 5; //5
+                        auto rad = 1;  //2
+
+                        auto closests = tree_skeleton.m_closest(N_closest, g.pos[n], rad);
+                        cout << "nbors size: " << closests.size() << endl;
+
+                        //A loop, that find the closest point using sqrt  dist
+                        //And the closest which also dont have loose_seen == 1
+
+                       for(const auto& nn: closests){ //(const auto& nn: closests)
+                           cout << "For the nn closest NBs: "  << endl;
+                           g.node_color[nn.v] = Vec3f(0,0,1);
+
+                           cout << "Distance for the NB: " << dist[nn.v] << endl;
+                                                            
+                                                            
+                           if(nn.v != n){//loose_seen[nn.v] == 0 && nn.v != node
+                               //calculate distance between node
+                               auto sqr_dist = sqrt(g.sqr_dist(nn.v, n));
+
+                               //NBs to the node
+                               auto node_NB = g.neighbors(n);
+                               for(auto j: node_NB){
+                               //calculate the angle between the NB/node/connect_node
+                               //Do this for either side of the node if NB size = 2
+
+                               //n = node, nb = node NB, c = connect node
+                               auto xn = g.pos[n][0];
+                               auto xnb = g.pos[j][0];
+                               auto xc = g.pos[nn.v][0];
+                               auto yn = g.pos[n][1];
+                               auto ynb = g.pos[j][1];
+                               auto yc = g.pos[nn.v][1];
+                               auto zn = g.pos[n][2];
+                               auto znb = g.pos[j][2];
+                               auto zc = g.pos[nn.v][2];
+
+
+                          // branch direction
+                               auto xb = xnb-xn;
+                               auto yb = ynb-yn;
+                               auto zb = znb-zn;
+
+                          //connect direction
+                               auto xcd = xc-xn;
+                               auto ycd = yc-yn;
+                               auto zcd = zc-zn;
+
+                               auto length_b = sqrt(xb*xb + yb*yb + zb*zb);
+                               auto length_c = sqrt(xcd*xcd + ycd*ycd + zcd*zcd);
+                 
+                               cout << "length b and c: " << length_b << " " << length_c <<  endl;
+
+                               auto dot_p = ((xb/length_b)*(xcd/length_c) + (yb/length_b)*(xcd/length_c) + (zb/length_b)*(zcd/length_c));
+
+                               auto length_b_unit = sqrt((xb/length_b)*(xb/length_b) + (yb/length_b)*(yb/length_b) + (zb/length_b)*(zb/length_b));
+                               auto length_c_unit = sqrt((xcd/length_c)*(xcd/length_c) + (ycd/length_c)*(ycd/length_c) + (zcd/length_c)*(zcd/length_c));
+
+
+                               angle = (acos(dot_p/(length_b_unit*length_c_unit))*180)/3.141592;
+
+                               cout << "Angle: "  << angle << endl;
+
+                               //For STRAIGHT  BRANCHES
+                                   if((min_dist > length_c && angle > best_angle*1.1) && NB_is_3 == 0){  //((min_dist*2.5 > length_c && angle > best_angle*1.1) && NB_is_3 == 0)
+                                   // min_dist*2.5 > length_c && angle > best_angle*1.1) && NB_is_3 == 0     error 36.8283
+                                    // min_dist*1.5 > length_c && angle > best_angle*1.1) && NB_is_3 == 0    error 36.8511
+                                    //angle > best_angle) && NB_is_3 == 0      error 38.8442
+                                       // (angle > best_angle) && NB_is_3 == 0    error 36.8344   rad = 0.5  N=3
+                                    cout << "We choose to change to connect this new node "  << endl;
+                                    closest_node = nn.v;
+                                    min_dist = length_c; //length_c
+                                    connect_node = n; // n is the currently invested node from the vector of critical nodes
+                                    best_angle = angle;
+                               }
+                                                                    
+                               //For COMPLEX BRANCHES
+                                   if(dist[nn.v] < (pred_dist+8)  && NB_is_3 == 1){  //dist[nn.v] < pred_dist*1.3 && NB_is_3 == 1
+                                    if((min_dist > length_c)){ // (min_dist*2.5 > length_c && angle > best_angle)
+                                        cout << "We choose to change to connect this new node "  << endl;
+                                        closest_node = nn.v;
+                                        min_dist = length_c; //length_c
+                                        connect_node = n;
+                                        best_angle = angle;
+                                        pred_dist = dist[nn.v];
+                                     }
+                                }
+                           }
+                       }
+                  }
+             }
+
+                        //Connect the found nodes
+                        if(closest_node != 0 && connect_node != 0){
+                            int connected = 0;
+                            
+                            cout << "________________________________"  << endl;
+                            cout <<"WE CONNECTS" << endl;
+                            cout <<"min dist " << min_dist << endl;
+                            cout << "The angle: " << best_angle << endl;
+                            if(connect_dist == 0){ //Connect all if no restrains are given from the iterative function
+                                if(min_dist < 0.304679){  //the limit is the 95% quantile
+                                    connected = 1;
+                                    g.connect_nodes(closest_node, connect_node);
+                                    g.node_color[closest_node] = Vec3f(0,1,0);
+                                    no_connections += 1;
+                                    ave_dist_total += min_dist;
+                                        median_dist.push_back(min_dist);
+                                        
+                                }
+                            }
+                            if(connect_dist > min_dist){ //If conrtains are given, only attach the ones with smaller distances
+                                connected = 1;
+                                g.connect_nodes(closest_node, connect_node);
+                                g.node_color[closest_node] = Vec3f(0,1,0);
+                                no_connections += 1;
+                                ave_dist_total += min_dist;
+                                median_dist.push_back(min_dist);
+                            }
+                            
+                            
+                            //Assign distances to the branch thats connected
+                            //Right now the branch nodes just all get the same distance as the node we connect to from the skeleton
+                            double assign_dist = dist[closest_node];
+                            for(auto a: remember_branch){
+                                auto rem_node = remember_branch.front();
+                                remember_branch.erase(remember_branch.begin());
+                                
+                                if(connected == 1){ //If the branch ends up beeing connected
+                                   dist[rem_node] = assign_dist;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    
+    cout << "_____________________________________" << endl;
+    cout << "The ave dist is: " <<  ave_dist_total/no_connections << endl;
+    cout << " " << endl;
+    sort(median_dist.begin(),median_dist.end());
+    if(median_dist.size() != 0){
+    cout << "The median is: " << median_dist[(floor(median_dist.size()/2))] <<endl;
+    cout << " " << endl;
+    cout << "The 75% quantile is: " << median_dist[(floor(median_dist.size()*(0.75)))] <<endl;
+    cout << "The 95% quantile is: " << median_dist[(floor(median_dist.size()*(0.95)))] <<endl;
+    }
+
+    
+    return clean_graph(g);
+//    return make_pair(no_connections, g);
+    
+}
+
+
+
+AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width){
+    
+    //Vector of distances that we will allow
+    queue<double> distance_check;
+    distance_check.push(0.1); //0.261
+    
+    int iterations = 0;
+    bool end = false;
+    int MAX = 6;
+    
+    //We iterate as many times as we set checkpoints for distances
+    while(!distance_check.empty()){
+        iterations += 1;
+        cout << "DISTANCE CHECK *********************" << iterations << endl;
+        
+        double connect = distance_check.front();
+        distance_check.pop();
+        
+        //Get distance vector for the graph
+        auto a_pair = distance_to_all_nodes(g);
+        auto dist = a_pair.first;
+        
+        //Find the number of loose nodes in the graph
+        KDTree<Vec3d, AMGraph3D::NodeID> tree_skeleton;
+        KDTree<Vec3d, AMGraph3D::NodeID> tree_branches;
+
+        vector<NodeID> loose;
+        Util::AttribVec<NodeID, int> loose_seen(g.no_nodes(),0);  //part of the big skeleton, 0 loose branch, 1 has ben searched
+        
+        //Color all nodes that can not be reached red
+        NodeID lose_nodes = 0;
+        NodeID connected_nodes = 0;
+        for(auto i = 0; i < g.no_nodes(); i++ ) {
+            if(dist[i] == 0){
+                g.node_color[i] = Vec3f(1,0,0);
+                lose_nodes += 1;
+        
+                //Create a vector with these LOOSE nodes
+                loose.push_back(i);
+                tree_branches.insert(g.pos[i], i);
+            }
+            else{
+                connected_nodes += 1;
+                tree_skeleton.insert(g.pos[i], i);
+               }
+        }
+        
+        tree_skeleton.build();
+        tree_branches.build();
+        
+        
+        auto gn = attach_branches(g, connect);
+        
+        g = gn;
+        
+    
+        if(iterations < MAX){
+            distance_check.push(connect*1.2);
+        }
+        
+        
+        //If we have meet our max number of iterations we set distance to inf/very big and end
+        if(iterations == MAX){
+            end = true;
+            distance_check.push(100); //100  0.305
+            
+        }
+        
+        cout << "______________________________" << endl;
+        cout << "NEW DISTANCE" << endl;
+
+        
+        
+    }
+    cout << "_*_*_*_**_*_*" << endl;
+    cout << "IN TOTAL WE DID " << iterations << " ITERATIONS" << endl;
+    
+    return clean_graph(g);
+    
+}
+
+void color_detached_parts(Geometry::AMGraph3D& g){
+    
+
+    
+    auto a_pair = distance_to_all_nodes(g);
+    auto dist = a_pair.first;
+    
+    KDTree<Vec3d, AMGraph3D::NodeID> tree_skeleton;
+    KDTree<Vec3d, AMGraph3D::NodeID> tree_branches;
+
+    vector<NodeID> loose;
+    Util::AttribVec<NodeID, int> loose_seen(g.no_nodes(),0);  //part of the big skeleton, 0 loose branch, 1 has ben searched
+    
+    for(auto i: g.node_ids()){
+        g.node_color[i] = Vec3f(0,0,0);
+    }
+    
+    //Color all nodes that can not be reached red
+    NodeID lose_nodes = 0;
+    NodeID connected_nodes = 0;
+    for(auto i = 0; i < g.no_nodes(); i++ ) {
+        if(dist[i] == 0){
+            g.node_color[i] = Vec3f(1,0,0);
+            lose_nodes += 1;
+    
+            //Create a vector with these LOOSE nodes
+            loose.push_back(i);
+            tree_branches.insert(g.pos[i], i);
+
+        }
+        else{
+            connected_nodes += 1;
+            tree_skeleton.insert(g.pos[i], i);
+           }
+    }
+    
+    tree_skeleton.build();
+    tree_branches.build();
+    
+    cout << "loose nodes " << lose_nodes << endl;
+    cout << "total number " << g.no_nodes() << endl;
+}
+
 
 // ------------------------------
 }
