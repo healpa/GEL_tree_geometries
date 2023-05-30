@@ -2282,6 +2282,20 @@ void console_root_clean_up(MeshEditor* me, const std::vector<std::string> & args
     g  = bottom_node(g);
 }
 
+void console_color_loose_branches(MeshEditor* me, const std::vector<std::string> & args)
+{
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    color_detached_parts(g);
+}
+
+void console_connect_branches(MeshEditor* me, const std::vector<std::string> & args)
+{
+    double root_width = console_arg(args, 0, 0.5);
+//    double s = console_arg(args, 0, 1);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g = attach_branches_iteratively(g, root_width);
+}
+
 
 // ---------------------------------
 
@@ -2403,6 +2417,8 @@ void console_root_clean_up(MeshEditor* me, const std::vector<std::string> & args
         register_console_function("graph.7_local_separators", console_local_separators,"");
         register_console_function("graph.8.LS_to_skeleton", console_LS_to_skeleton,"");
         register_console_function("graph.9.root_clean_up", console_root_clean_up,"");
+        register_console_function("graph.10.color_loose_branches", console_color_loose_branches,"");
+        register_console_function("graph.11.reconnect_branches", console_connect_branches,"");
         //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
