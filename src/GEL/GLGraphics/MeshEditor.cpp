@@ -2290,11 +2290,33 @@ void console_color_loose_branches(MeshEditor* me, const std::vector<std::string>
 
 void console_connect_branches(MeshEditor* me, const std::vector<std::string> & args)
 {
-    double root_width = console_arg(args, 0, 0.5);
-//    double s = console_arg(args, 0, 1);
+    double root_width = 0.5;
+    std::string use_default;
+    std::cout << "Do you want to use the default angles for considering nodes as possible connection nodes (straight: 130, complex 90)? (Y/N): ";
+    std::cin >> use_default;
+    
+    double angle_straight, angle_complex;
+    
+    if (use_default == "Y" || use_default == "y")
+    {
+        
+        angle_straight = 130;
+        angle_complex = 90;
+    }
+    else
+    {
+       
+        std::cout << "Enter the angle for straight branches: ";
+        std::cin >> angle_straight;
+        
+        std::cout << "Enter the angle for complex branches: ";
+        std::cin >> angle_complex;
+    }
+    
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
-    g = attach_branches_iteratively(g, root_width);
+    g = attach_branches_iteratively(g, root_width, angle_straight, angle_complex);
 }
+
 
 
 // ---------------------------------
