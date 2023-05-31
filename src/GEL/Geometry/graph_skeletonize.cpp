@@ -1632,7 +1632,7 @@ pair<AttribVec<NodeID, int>,AttribVec<NodeID, NodeID>> distance_to_all_nodes(Geo
     return make_pair(dist,pred);
 }
 
-AMGraph3D attach_branches(Geometry::AMGraph3D& g, double connect_dist){
+AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double angle_straight, double angle_complex){
     
     auto a_pair = distance_to_all_nodes(g); //Function finding all distances
     auto dist = a_pair.first;
@@ -1805,7 +1805,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g, double connect_dist){
                             }
                                 
                             //Find the critical angles for COMPLEX BRANCHES
-                            if(internal_angle < 90 && NB_is_3 == 1){
+                            if(internal_angle < angle_complex && NB_is_3 == 1){
                                 critical_nodes.push_back(node);
                                 g.node_color[node] = Vec3f(0,1,0);
                             }
@@ -1815,12 +1815,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g, double connect_dist){
                     } //End while for going through the empty branch
                         
                     //If the angle is consideres a direction of change (angle < 140 deg) then we consider this node as well
-                    if(branch_internal_angle < 130 && NB_is_3 == 0){
-                        if(branch_internal_angle <= 90){ //If the angle moreover is smaller than 90deg, it shall choose this node only
-//                            while(!critical_nodes.empty()){
-//                                critical_nodes.pop_back();
-//                            }
-                        }
+                    if(branch_internal_angle < angle_straight && NB_is_3 == 0){
                         critical_nodes.push_back(add_critical_node);
                         g.node_color[add_critical_node] = Vec3f(0,1,0);
                     }
@@ -1998,7 +1993,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g, double connect_dist){
 
 
 
-AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width){
+AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,  double angle_straight, double angle_complex){
     
     //Vector of distances that we will allow
     queue<double> distance_check;
@@ -2015,6 +2010,7 @@ AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width)
         
         double connect = distance_check.front();
         distance_check.pop();
+        cout << "current connection distance: " << connect << endl;
         
         //Get distance vector for the graph
         auto a_pair = distance_to_all_nodes(g);
@@ -2049,7 +2045,7 @@ AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width)
         tree_branches.build();
         
         
-        auto gn = attach_branches(g, connect);
+        auto gn = attach_branches(g, connect, angle_straight,angle_complex);
         
         g = gn;
         
