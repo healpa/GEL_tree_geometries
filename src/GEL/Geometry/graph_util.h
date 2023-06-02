@@ -47,6 +47,7 @@ namespace Geometry {
     /// Removing outliers BEFORE procedding with saturating the graph
     void remove_outliers_graph(AMGraph3D& g, int nb);
 
+
     // ------------------------------
 
     /** Add edges to g. For each vertex in g we visit neighbors at a maximum of `hops' graph hops from the original vertex.

@@ -219,7 +219,8 @@ void color_detached_parts(Geometry::AMGraph3D& g);
 // angle_straight and complex are used to find the critical nodes (= node to which a connecting edge has most likely the best fit) if the angles are smaller than the stated angles it would be a change of direction of the branch - which will mostly not occur in nature but shows a missing brnach connection in our case
 Geometry::AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_distance, double angle_straight, double angle_complex);
 Geometry::AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,  double angle_straight, double angle_complex);
-
+Geometry::AMGraph3D create_spanning_tree(Geometry::AMGraph3D& g);
+double calculatePercentageNotConnected(Geometry::AMGraph3D& g);
 
 // -----------------------------
 

@@ -1418,8 +1418,7 @@ AMGraph3D bottom_node(Geometry::AMGraph3D& g){
 
 
 NodeID bottom_node_return(Geometry::AMGraph3D& g){
-    
-    //Fnding z-values and the lowest edges
+    cout << "** bottom_node_return function **" << endl;    //Fnding z-values and the lowest edges
     
     vector<double> z_values;
     vector<double> z_values_low;
@@ -1428,9 +1427,9 @@ NodeID bottom_node_return(Geometry::AMGraph3D& g){
     //Loading z-coordinates into vector
     for(auto i: g.node_ids()){
         z_values.push_back(g.pos[i][2]);
-        cout << g.pos[i][2] << " ";
+        //cout << g.pos[i][2] << " ";
      }
-    cout << "Stop" << endl;
+   // cout << "Stop" << endl;
       
     //Sort the z values and find the X lowest nodes
     int X = 30;
@@ -1493,7 +1492,7 @@ NodeID bottom_node_return(Geometry::AMGraph3D& g){
 
 //Find distances to all nodes
 pair<AttribVec<NodeID, int>,AttribVec<NodeID, NodeID>> distance_to_all_nodes(Geometry::AMGraph3D& g){
-    
+    cout << "** distance to all nodes function **" << endl;
 //        NodeID s = skel_root_node(g);  //for branch 22
         NodeID s = bottom_node_return(g); // for normal
         NodeID next;
@@ -1721,7 +1720,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                     }
 
                 if(q.empty() ){ // ************ && NB_is_3 == 0
-                    cout << "NEW BRANCH"  << endl;
+                    //cout << "NEW BRANCH"  << endl;
                     //If the queue is empty (finished the branch), we color this branch
                         
                     vector<NodeID> critical_nodes; //Check these nodes in the branch for the closest NB
@@ -1740,7 +1739,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                         vector<NodeID> neighbours; //NB for each  nodes
                         
                         auto NB_size = g.neighbors(node).size();
-                        cout << "*************************************** The size of the NB  " << NB_size << endl;
+                        //cout << "*************************************** The size of the NB  " << NB_size << endl;
                             
                         //If the node has NB=1 then just add to critical_nodes
                         if(NB_size == 1){
@@ -1762,7 +1761,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                                 neighbours.push_back(j);
                             }
                                 
-                            cout << "__________________________ The size of the NB vector " << neighbours.size() << endl;
+                            //cout << "__________________________ The size of the NB vector " << neighbours.size() << endl;
                                 
                             //n = node, nb = node NB, c = connect node
                             auto xn = g.pos[node][0];
@@ -1794,11 +1793,11 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
 
                             internal_angle = (acos(dot_p/(length_b_unit*length_c_unit))*180)/3.141592;
                                 
-                            cout << "WE FOUND AN INTERNAL ANGLE_________________" << internal_angle << endl;
+                            //cout << "WE FOUND AN INTERNAL ANGLE_________________" << internal_angle << endl;
                                 
                             //Find the smallest internal angle in the branch for STRAIGHT BRANCHES
                             if(internal_angle < branch_internal_angle && NB_is_3 == 0){
-                                cout << "WE connect_ *****   _" << internal_angle << endl;
+                                //cout << "WE connect_ *****   _" << internal_angle << endl;
                                 branch_internal_angle = internal_angle;
                                 add_critical_node = node; //neighbours[1]
                                 critical_nodes.push_back(add_critical_node); /// Just added as a test
@@ -1833,22 +1832,22 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                     double angle = 0;
                         
                     for(auto n: critical_nodes){ //g.neighbors(node).size() == 1
-                        cout << "ONE NB node found"  << endl;
+                        //cout << "ONE NB node found"  << endl;
                         g.node_color[n] = Vec3f(0,1,0);
                         int N_closest = 5; //5
                         auto rad = 1;  //2
 
                         auto closests = tree_skeleton.m_closest(N_closest, g.pos[n], rad);
-                        cout << "nbors size: " << closests.size() << endl;
+                        //cout << "nbors size: " << closests.size() << endl;
 
                         //A loop, that find the closest point using sqrt  dist
                         //And the closest which also dont have loose_seen == 1
 
                        for(const auto& nn: closests){ //(const auto& nn: closests)
-                           cout << "For the nn closest NBs: "  << endl;
+                           //cout << "For the nn closest NBs: "  << endl;
                            g.node_color[nn.v] = Vec3f(0,0,1);
 
-                           cout << "Distance for the NB: " << dist[nn.v] << endl;
+                           //cout << "Distance for the NB: " << dist[nn.v] << endl;
                                                             
                                                             
                            if(nn.v != n){//loose_seen[nn.v] == 0 && nn.v != node
@@ -1886,7 +1885,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                                auto length_b = sqrt(xb*xb + yb*yb + zb*zb);
                                auto length_c = sqrt(xcd*xcd + ycd*ycd + zcd*zcd);
                  
-                               cout << "length b and c: " << length_b << " " << length_c <<  endl;
+                               //cout << "length b and c: " << length_b << " " << length_c <<  endl;
 
                                auto dot_p = ((xb/length_b)*(xcd/length_c) + (yb/length_b)*(xcd/length_c) + (zb/length_b)*(zcd/length_c));
 
@@ -1896,7 +1895,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
 
                                angle = (acos(dot_p/(length_b_unit*length_c_unit))*180)/3.141592;
 
-                               cout << "Angle: "  << angle << endl;
+                               //cout << "Angle: "  << angle << endl;
 
                                //For STRAIGHT  BRANCHES
                                    if((min_dist > length_c && angle > best_angle*1.1) && NB_is_3 == 0){  //((min_dist*2.5 > length_c && angle > best_angle*1.1) && NB_is_3 == 0)
@@ -1904,7 +1903,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                                     // min_dist*1.5 > length_c && angle > best_angle*1.1) && NB_is_3 == 0    error 36.8511
                                     //angle > best_angle) && NB_is_3 == 0      error 38.8442
                                        // (angle > best_angle) && NB_is_3 == 0    error 36.8344   rad = 0.5  N=3
-                                    cout << "We choose to change to connect this new node "  << endl;
+                                   // cout << "We choose to change to connect this new node "  << endl;
                                     closest_node = nn.v;
                                     min_dist = length_c; //length_c
                                     connect_node = n; // n is the currently invested node from the vector of critical nodes
@@ -1914,7 +1913,7 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                                //For COMPLEX BRANCHES
                                    if(dist[nn.v] < (pred_dist+8)  && NB_is_3 == 1){  //dist[nn.v] < pred_dist*1.3 && NB_is_3 == 1
                                     if((min_dist > length_c)){ // (min_dist*2.5 > length_c && angle > best_angle)
-                                        cout << "We choose to change to connect this new node "  << endl;
+                                       // cout << "We choose to change to connect this new node "  << endl;
                                         closest_node = nn.v;
                                         min_dist = length_c; //length_c
                                         connect_node = n;
@@ -1931,10 +1930,10 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
                         if(closest_node != 0 && connect_node != 0){
                             int connected = 0;
                             
-                            cout << "________________________________"  << endl;
-                            cout <<"WE CONNECTS" << endl;
-                            cout <<"min dist " << min_dist << endl;
-                            cout << "The angle: " << best_angle << endl;
+                            //cout << "________________________________"  << endl;
+                            //cout <<"WE CONNECTS" << endl;
+                           // cout <<"min dist " << min_dist << endl;
+                           // cout << "The angle: " << best_angle << endl;
                             if(connect_dist == 0){ //Connect all if no restrains are given from the iterative function
                                 if(min_dist < 0.304679){  //the limit is the 95% quantile
                                     connected = 1;
@@ -1978,12 +1977,12 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
     cout << "The ave dist is: " <<  ave_dist_total/no_connections << endl;
     cout << " " << endl;
     sort(median_dist.begin(),median_dist.end());
-    if(median_dist.size() != 0){
-    cout << "The median is: " << median_dist[(floor(median_dist.size()/2))] <<endl;
-    cout << " " << endl;
-    cout << "The 75% quantile is: " << median_dist[(floor(median_dist.size()*(0.75)))] <<endl;
-    cout << "The 95% quantile is: " << median_dist[(floor(median_dist.size()*(0.95)))] <<endl;
-    }
+    //if(median_dist.size() != 0){
+    //cout << "The median is: " << median_dist[(floor(median_dist.size()/2))] <<endl;
+    //cout << " " << endl;
+    //cout << "The 75% quantile is: " << median_dist[(floor(median_dist.size()*(0.75)))] <<endl;
+    //cout << "The 95% quantile is: " << median_dist[(floor(median_dist.size()*(0.95)))] <<endl;
+    //}
 
     
     return clean_graph(g);
@@ -2006,7 +2005,7 @@ AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,
     //We iterate as many times as we set checkpoints for distances
     while(!distance_check.empty()){
         iterations += 1;
-        cout << "DISTANCE CHECK *********************" << iterations << endl;
+        //cout << "DISTANCE CHECK *********************" << iterations << endl;
         
         double connect = distance_check.front();
         distance_check.pop();
@@ -2077,8 +2076,6 @@ AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,
 
 void color_detached_parts(Geometry::AMGraph3D& g){
     
-
-    
     auto a_pair = distance_to_all_nodes(g);
     auto dist = a_pair.first;
     
@@ -2116,8 +2113,161 @@ void color_detached_parts(Geometry::AMGraph3D& g){
     
     cout << "loose nodes " << lose_nodes << endl;
     cout << "total number " << g.no_nodes() << endl;
+    
+    double percentage_not_connected = (static_cast<float>(lose_nodes) / g.no_nodes()) * 100.0f;
+    cout << "percentage of not connected nodes: " << percentage_not_connected << "%" << endl;
+}
+
+double calculatePercentageNotConnected(Geometry::AMGraph3D& g) {
+    auto a_pair = distance_to_all_nodes(g);
+    auto dist = a_pair.first;
+
+    KDTree<Vec3d, AMGraph3D::NodeID> tree_skeleton;
+    KDTree<Vec3d, AMGraph3D::NodeID> tree_branches;
+
+    vector<NodeID> loose;
+    Util::AttribVec<NodeID, int> loose_seen(g.no_nodes(), 0);  //part of the big skeleton, 0 loose branch, 1 has been searched
+
+    for (auto i: g.node_ids()) {
+        g.node_color[i] = Vec3f(0, 0, 0);
+    }
+
+    // Color all nodes that cannot be reached red
+    NodeID loose_nodes = 0;
+    NodeID connected_nodes = 0;
+    for (auto i = 0; i < g.no_nodes(); i++) {
+        if (dist[i] == 0) {
+            g.node_color[i] = Vec3f(1, 0, 0);
+            loose_nodes += 1;
+
+            // Create a vector with these LOOSE nodes
+            loose.push_back(i);
+            tree_branches.insert(g.pos[i], i);
+        }
+        else {
+            connected_nodes += 1;
+            tree_skeleton.insert(g.pos[i], i);
+        }
+    }
+
+    tree_skeleton.build();
+    tree_branches.build();
+
+    cout << "loose nodes " << loose_nodes << endl;
+    cout << "total number " << g.no_nodes() << endl;
+
+    double percentage_not_connected = (static_cast<float>(loose_nodes) / g.no_nodes()) * 100.0f;
+    return percentage_not_connected;
 }
 
 
-// ------------------------------
+
+double two_point_distance_XY(Vec3d& v1, Vec3d& v2){
+
+
+    auto xn = v1[0];
+    auto xc = v2[0];
+    auto yn = v1[1];
+    auto yc = v2[1];
+    
+    //direction
+    auto xcd = xc-xn;
+    auto ycd = yc-yn;
+
+    auto vec_length = sqrt(xcd*xcd + ycd*ycd);
+    
+    return vec_length;
+    
+}
+
+
+
+
+
+
+AMGraph3D create_spanning_tree(Geometry::AMGraph3D& g){ //, double root_width
+    //    DISCONNECT CIRCLES AT THE POINT FURTHEST AWAY FROM CENTER OF MASS IN (X,Y)-PLAN
+    
+    auto center = bottom_node_return(g);
+    int count_broken_cycles = 0;
+    
+    Util::AttribVec<NodeID, int> seen(g.no_nodes(),0);  // 1 seen but not connected further
+    vector<double> distances;
+    vector<NodeID> next_ones;
+    double min_dist = 1000;
+    NodeID index;
+    int erase_j_index;
+    
+    //Loading xy-distance for all points into vector
+    for(auto i: g.node_ids()){
+        auto dist = two_point_distance_XY(g.pos[center], g.pos[i]);
+        distances.push_back(dist);
+        if(dist < min_dist){
+            min_dist = dist;
+            index = i;
+        }
+    }
+    
+    next_ones.push_back(index); //Assigning the first node to start with
+    
+    AMGraph3D gn;
+    for(auto n: g.node_ids())
+        gn.add_node(g.pos[n]);
+    
+    while(next_ones.size() !=  0){
+        cout << "Finding min still" << endl;
+        //Find the minimum
+        min_dist = 10000;
+        cout << "Min dist: ";
+        for(int j = 0; j < next_ones.size(); j++){
+            auto i = next_ones[j];
+            if(distances[i] < min_dist){
+                min_dist = distances[i];
+                index =  i;
+                erase_j_index = j;
+                cout << min_dist<<" ";
+            }
+        }
+        
+        
+        
+        //Check how many of its NB that havent been seen before
+        
+        auto no_NB = g.neighbors(index).size();
+        int count = 0;
+        NodeID cycle_node;
+        //All of them should be unseen, bc if they are not, then there is a cycle, and we should choose to delete a connection/edge
+        for(auto k: g.neighbors(index)){
+            if(seen[k] == 0){
+                count += 1;
+                seen[k] = 1;
+                gn.connect_nodes(index, k);
+                next_ones.push_back(k);
+            }
+            else{
+                cycle_node = index;
+                
+            }
+        }
+        if (count == 0 && no_NB != 1) { // CYCLE
+            cout << "CYCLE ********" << endl;
+            gn.node_color[index] = Vec3f(1, 0, 0);
+            distances[index] += 1000;
+            // g.disconnect_nodes(index, cycle_node);
+            count_broken_cycles++;
+        }
+        else{ //NO CYCLE
+            //Add +1000 to the z-value
+            distances[index] += 1000;
+            gn.node_color[index] = Vec3f(0,1,0);
+        }
+        next_ones.erase(next_ones.begin() + erase_j_index);
+        
+        //Set the seen NB to 1
+        // + 100 to the registered node
+    }
+    
+    cout << "Number of broken cycles: " << count_broken_cycles << endl;
+    return clean_graph(gn);
+}
 }

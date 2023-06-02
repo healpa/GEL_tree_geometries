@@ -2249,21 +2249,28 @@ void console_local_separators(MeshEditor* me, const std::vector<std::string> & a
 
 void console_load_graph(MeshEditor* me, const std::vector<std::string> & args) {
     string file_name = args.size() == 0 ? "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/winter_tree_0.02_15_saturate_5_0.05_edge_contract_0.025.graph" : args[0];
-   
 
     // Prompt the user to choose between the default graph or entering a file path
-    std::cout << "Load the default graph: " << file_name << "? (Y/N): ";
     std::string choice;
-    std::getline(std::cin, choice);
+    while (true) {
+        std::cout << "Load the default graph: " << file_name << "? (Y/N): ";
+        std::getline(std::cin, choice);
 
-    if (choice.empty() || choice == "Y" || choice == "y") {
-        me->active_visobj().get_graph() = Geometry::graph_load(file_name);
-    } else {
-        std::cout << "Enter a file path to load the graph: ";
-        std::getline(std::cin, file_name);
-        me->active_visobj().get_graph() = Geometry::graph_load(file_name);
+        if (choice.empty() || choice == "Y" || choice == "y") {
+            me->active_visobj().get_graph() = Geometry::graph_load(file_name);
+            break;
+        } else if (choice == "N" || choice == "n") {
+            std::cout << "Enter a file path to load the graph: ";
+            std::getline(std::cin, file_name);
+            me->active_visobj().get_graph() = Geometry::graph_load(file_name);
+            break;
+        } else {
+            std::cout << "Invalid choice. Please enter 'Y' or 'N'." << std::endl;
+        }
     }
 }
+
+
 
 void console_LS_to_skeleton(MeshEditor* me, const std::vector<std::string>& args)
 {
@@ -2318,7 +2325,46 @@ void console_connect_branches(MeshEditor* me, const std::vector<std::string> & a
 }
 
 
+void console_spanning_tree(MeshEditor* me, const std::vector<std::string> & args)
+{
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g = create_spanning_tree(g);
+    
+}
 
+
+
+
+/// not user input here since just for a quick analyses
+void console_vary_angles(MeshEditor* me, const std::vector<std::string> & args)
+{
+    double root_width = 0.5;
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    std::vector<double> straightAngles = { 100, 120, 140, 160, 180};
+    std::vector<double> complexAngles = { 60, 80, 100, 120 , 140};
+    
+    std::cout << "*****Straight Angles (for complex = 90):****" << std::endl;
+    for (auto angle : straightAngles) {
+        attach_branches_iteratively(g, root_width, angle, 90); // Vary the angle for straight branches
+        
+        double percentageNotConnected =calculatePercentageNotConnected(g);
+        std::cout << "Angle: " << angle << ", Percentage of Not Connected Branches: " << percentageNotConnected << "%" << std::endl;
+        // Reset the graph before each iteration
+        g.clear();
+        me->active_visobj().get_graph() = Geometry::graph_load("/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/skeletonNotReconnected.graph");
+    }
+    
+    std::cout << "****Complex Angles (for straight = 130) :****" << std::endl;
+    for (auto angle : complexAngles) {
+        
+        attach_branches_iteratively(g, root_width, 130, angle); // Vary the angle for complex branches
+        
+        double percentageNotConnected = calculatePercentageNotConnected(g);
+        std::cout << "Angle: " << angle << ", Percentage of Not Connected Branches: " << percentageNotConnected << "%" << std::endl;
+        g.clear();
+        me->active_visobj().get_graph() = Geometry::graph_load("/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/skeletonNotReconnected.graph");
+    }
+}
 // ---------------------------------
 
 
@@ -2438,9 +2484,11 @@ void console_connect_branches(MeshEditor* me, const std::vector<std::string> & a
         register_console_function("graph.6_edge_contract", console_graph_edge_contract,"");
         register_console_function("graph.7_local_separators", console_local_separators,"");
         register_console_function("graph.8.LS_to_skeleton", console_LS_to_skeleton,"");
-        register_console_function("graph.9.root_clean_up", console_root_clean_up,"");
-        register_console_function("graph.10.color_loose_branches", console_color_loose_branches,"");
-        register_console_function("graph.11.reconnect_branches", console_connect_branches,"");
+        register_console_function("graph.9_root_clean_up", console_root_clean_up,"");
+        register_console_function("graph.10_color_loose_branches", console_color_loose_branches,"");
+        register_console_function("graph.11_reconnect_branches", console_connect_branches,"");
+        register_console_function("graph.12_spanning_tree", console_spanning_tree, "");
+        register_console_function("graph.13_vary_angles", console_vary_angles,"");
         //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
