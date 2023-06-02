@@ -2247,6 +2247,7 @@ AMGraph3D create_spanning_tree(Geometry::AMGraph3D& g){ //, double root_width
             else{
                 cycle_node = index;
                 
+                
             }
         }
         if (count == 0 && no_NB != 1) { // CYCLE
