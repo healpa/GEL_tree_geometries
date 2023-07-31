@@ -2048,7 +2048,7 @@ bool endsWith(const std::string& str, const std::string& suffix) {
 
 void console_save_graph(MeshEditor* me, const std::vector<std::string>& args) {
     std::string file_name;
-    std::string save_folder = "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/";
+    std::string save_folder = "/Users/healpa/Documents/git/GEL_tree_geometries/data/graph/";
     
     if (args.empty()) {
         std::cout << "Enter a name for the saved file: ";
@@ -2084,7 +2084,7 @@ void console_save_graph(MeshEditor* me, const std::vector<std::string>& args) {
 
 void console_points_to_graph(MeshEditor* me, const std::vector<std::string>& args)
 {
-    string file_name = "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+    string file_name = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
         
         // Check if the user provided a file name as input
         if (args.size() > 0) {
@@ -2098,7 +2098,7 @@ void console_points_to_graph(MeshEditor* me, const std::vector<std::string>& arg
             std::getline(std::cin, file_name);
             if (file_name.empty()) {
                 // Use default file name if no input provided
-                file_name = "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+                file_name = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
             }
         }
     
@@ -2248,7 +2248,7 @@ void console_local_separators(MeshEditor* me, const std::vector<std::string> & a
 }
 
 void console_load_graph(MeshEditor* me, const std::vector<std::string> & args) {
-    string file_name = args.size() == 0 ? "/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/winter_tree_0.02_15_saturate_5_0.05_edge_contract_0.025.graph" : args[0];
+    string file_name = args.size() == 0 ? "/Users/healpa/Documents/git/GEL_tree_geometries/data/graph/winter_tree_0.02_15_saturate_5_0.05_edge_contract_0.025.graph" : args[0];
 
     // Prompt the user to choose between the default graph or entering a file path
     std::string choice;
@@ -2351,7 +2351,7 @@ void console_vary_angles(MeshEditor* me, const std::vector<std::string> & args)
         std::cout << "Angle: " << angle << ", Percentage of Not Connected Branches: " << percentageNotConnected << "%" << std::endl;
         // Reset the graph before each iteration
         g.clear();
-        me->active_visobj().get_graph() = Geometry::graph_load("/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/skeletonNotReconnected.graph");
+        me->active_visobj().get_graph() = Geometry::graph_load("/Users/healpa/Documents/git/GEL_tree_geometries/data/graph/skeletonNotReconnected.graph");
     }
     
     std::cout << "****Complex Angles (for straight = 130) :****" << std::endl;
@@ -2362,7 +2362,7 @@ void console_vary_angles(MeshEditor* me, const std::vector<std::string> & args)
         double percentageNotConnected = calculatePercentageNotConnected(g);
         std::cout << "Angle: " << angle << ", Percentage of Not Connected Branches: " << percentageNotConnected << "%" << std::endl;
         g.clear();
-        me->active_visobj().get_graph() = Geometry::graph_load("/Users/helenalinapabst/Documents/git/GEL_tree_geometries/data/graph/skeletonNotReconnected.graph");
+        me->active_visobj().get_graph() = Geometry::graph_load("/Users/healpa/Documents/git/GEL_tree_geometries/data/graph/skeletonNotReconnected.graph");
     }
 }
 // ---------------------------------
