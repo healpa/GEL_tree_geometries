@@ -221,6 +221,8 @@ Geometry::AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist
 Geometry::AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,  double angle_straight, double angle_complex);
 Geometry::AMGraph3D create_spanning_tree(Geometry::AMGraph3D& g);
 double calculatePercentageNotConnected(Geometry::AMGraph3D& g);
+Geometry::AMGraph3D rad_estimate(Geometry::AMGraph3D &g, const std::string& file_name);
+Geometry::AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g);
 
 // -----------------------------
 

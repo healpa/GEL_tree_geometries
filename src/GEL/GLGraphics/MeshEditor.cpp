@@ -37,7 +37,7 @@
 
 // ---------- Edits Helen ---------
 #include "graph_util.h"
-#include "graph_skeletonize.h"
+#include <GEL/Geometry/graph_skeletonize.h>
 #include "graph_io.h"
 
 // --------------------------------
@@ -2248,6 +2248,8 @@ void console_local_separators(MeshEditor* me, const std::vector<std::string> & a
 }
 
 void console_load_graph(MeshEditor* me, const std::vector<std::string> & args) {
+
+    
     string file_name = args.size() == 0 ? "/Users/healpa/Documents/git/GEL_tree_geometries/data/graph/winter_tree_0.02_15_saturate_5_0.05_edge_contract_0.025.graph" : args[0];
 
     // Prompt the user to choose between the default graph or entering a file path
@@ -2335,7 +2337,7 @@ void console_spanning_tree(MeshEditor* me, const std::vector<std::string> & args
 
 
 
-/// not user input here since just for a quick analyses
+/// not designed for user ...  just for a quick analyses for me
 void console_vary_angles(MeshEditor* me, const std::vector<std::string> & args)
 {
     double root_width = 0.5;
@@ -2365,6 +2367,43 @@ void console_vary_angles(MeshEditor* me, const std::vector<std::string> & args)
         me->active_visobj().get_graph() = Geometry::graph_load("/Users/healpa/Documents/git/GEL_tree_geometries/data/graph/skeletonNotReconnected.graph");
     }
 }
+
+void console_trunk_diameter(MeshEditor* me, const std::vector<std::string> & args)
+{
+    string file_name = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+        
+        // Check if the user provided a file name as input
+        if (args.size() > 0) {
+            file_name = args[0];
+        }
+        else {
+            // Prompt the user for input
+            std::cout << "Enter the path to the point cloud file to use for the estimation (default: "
+                      << file_name << "): ";
+            std::cin.ignore(); // Ignore any leftover input in the stream
+            std::getline(std::cin, file_name);
+            if (file_name.empty()) {
+                // Use default file name if no input provided
+                file_name = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+            }
+        }
+    //double root_width = console_arg(args, 0, 0.5);
+    
+    //double root_width = 0.5; (removed because rad_estimate did not use it)
+    
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    
+    g  = rad_estimate(g,  file_name);
+    
+}
+
+void console_delta_fit(MeshEditor* me, const std::vector<std::string> & args)
+{
+    double root_width = console_arg(args, 0, 0.5);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g = dist_fitting_delta(g);
+}
+
 // ---------------------------------
 
 
@@ -2475,20 +2514,22 @@ void console_vary_angles(MeshEditor* me, const std::vector<std::string> & args)
         //--------- Edits Helen --------
         register_console_function("graph.0_clear",console_clear_graph,"");
         register_console_function("graph.00_save",console_save_graph,"");
-        register_console_function("graph.1a_load_pts", console_points_to_graph, "");
-        register_console_function("graph.1b_load_graph", console_load_graph, "");
-        register_console_function("graph.2_refit", console_graph_refit, "");
-        register_console_function("graph.3_remove_outliers", console_graph_remove_outliers, "");
-        register_console_function("graph.4_saturate", console_graph_saturate, "");
-        register_console_function("graph.5_prune", console_graph_prune,"");
-        register_console_function("graph.6_edge_contract", console_graph_edge_contract,"");
-        register_console_function("graph.7_local_separators", console_local_separators,"");
-        register_console_function("graph.8.LS_to_skeleton", console_LS_to_skeleton,"");
-        register_console_function("graph.9_root_clean_up", console_root_clean_up,"");
+        register_console_function("graph.01a_load_pts", console_points_to_graph, "");
+        register_console_function("graph.01b_load_graph", console_load_graph, "");
+        register_console_function("graph.02_refit", console_graph_refit, "");
+        register_console_function("graph.03_remove_outliers", console_graph_remove_outliers, "");
+        register_console_function("graph.04_saturate", console_graph_saturate, "");
+        register_console_function("graph.05_prune", console_graph_prune,"");
+        register_console_function("graph.06_edge_contract", console_graph_edge_contract,"");
+        register_console_function("graph.07_local_separators", console_local_separators,"");
+        register_console_function("graph.08.LS_to_skeleton", console_LS_to_skeleton,"");
+        register_console_function("graph.09_root_clean_up", console_root_clean_up,"");
         register_console_function("graph.10_color_loose_branches", console_color_loose_branches,"");
         register_console_function("graph.11_reconnect_branches", console_connect_branches,"");
         register_console_function("graph.12_spanning_tree", console_spanning_tree, "");
         register_console_function("graph.13_vary_angles", console_vary_angles,"");
+        register_console_function("graph.14_trunk_diameter",console_trunk_diameter,"");
+        register_console_function("graph.15_delta_fit",console_delta_fit,"");
         //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
