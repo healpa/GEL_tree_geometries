@@ -223,7 +223,7 @@ Geometry::AMGraph3D create_spanning_tree(Geometry::AMGraph3D& g);
 double calculatePercentageNotConnected(Geometry::AMGraph3D& g);
 Geometry::AMGraph3D rad_estimate(Geometry::AMGraph3D &g, const std::string& file_name);
 Geometry::AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g);
-
+Geometry::AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta);
 // -----------------------------
 
 }

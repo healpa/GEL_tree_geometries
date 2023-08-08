@@ -2370,7 +2370,7 @@ void console_vary_angles(MeshEditor* me, const std::vector<std::string> & args)
 
 void console_trunk_diameter(MeshEditor* me, const std::vector<std::string> & args)
 {
-    string file_name = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+    string file_name;
         
         // Check if the user provided a file name as input
         if (args.size() > 0) {
@@ -2387,9 +2387,6 @@ void console_trunk_diameter(MeshEditor* me, const std::vector<std::string> & arg
                 file_name = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
             }
         }
-    //double root_width = console_arg(args, 0, 0.5);
-    
-    //double root_width = 0.5; (removed because rad_estimate did not use it)
     
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
     
@@ -2399,11 +2396,49 @@ void console_trunk_diameter(MeshEditor* me, const std::vector<std::string> & arg
 
 void console_delta_fit(MeshEditor* me, const std::vector<std::string> & args)
 {
-    double root_width = console_arg(args, 0, 0.5);
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
     g = dist_fitting_delta(g);
 }
 
+
+
+void console_da_vinci(MeshEditor* me, const std::vector<std::string>& args)
+{
+    double root_width = 0.5;
+    double delta = 0.0;
+
+    std::cout << "Enter a value for delta (Press Enter for default value of 2.0): ";
+    std::string input;
+    std::getline(std::cin, input);
+    if (!input.empty()) {
+        delta = std::stod(input);
+    } else {
+        delta = 2.0; // Default value for delta
+    }
+
+    std::cout << "Enter the RADIUS of the trunk [m] (Press Enter for default value of 0.18 m): ";
+    std::string input2;
+    std::getline(std::cin, input2);
+    if (!input2.empty()) { // Fix the variable name here from input to input2
+        root_width = std::stod(input2);
+    } else {
+        root_width = 0.18;
+    }
+
+    // Assign the calculated values to the graph
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g = width_assign(g, root_width, delta);
+}
+
+void console_surfacemesh_iso(MeshEditor* me, const std::vector<std::string> & args) {
+    float fudge = console_arg(args, 0, 0.0f);
+    size_t res = console_arg(args, 1, 32);
+    float tau = console_arg(args, 2, 0.37f);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    Manifold& m = me->active_mesh();
+    me->save_active_mesh();
+    graph_to_mesh_iso(g, m, res, fudge, tau);
+}
 // ---------------------------------
 
 
@@ -2530,7 +2565,8 @@ void console_delta_fit(MeshEditor* me, const std::vector<std::string> & args)
         register_console_function("graph.13_vary_angles", console_vary_angles,"");
         register_console_function("graph.14_trunk_diameter",console_trunk_diameter,"");
         register_console_function("graph.15_delta_fit",console_delta_fit,"");
-        //------------------------------
+        register_console_function("graph.16_da_vinci",console_da_vinci,"");
+        register_console_function("graph.17_surfacemesh_iso", console_surfacemesh_iso, "");        //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
         active.reg(theConsole, "active_mesh", "The active mesh");
