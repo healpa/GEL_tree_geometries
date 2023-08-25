@@ -2394,12 +2394,19 @@ void console_trunk_diameter(MeshEditor* me, const std::vector<std::string> & arg
     
 }
 
-void console_delta_fit(MeshEditor* me, const std::vector<std::string> & args)
+void console_rad_per_node(MeshEditor* me, const std::vector<std::string> & args)
 {
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
-    g = dist_fitting_delta(g);
+    g = rad_per_node(g);
 }
 
+
+void console_delta_fit(MeshEditor* me, const std::vector<std::string> & args)
+{
+    double root_width = console_arg(args, 0, 0.5);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g = fitting_delta(g, root_width);
+}
 
 
 void console_da_vinci(MeshEditor* me, const std::vector<std::string>& args)
@@ -2430,6 +2437,15 @@ void console_da_vinci(MeshEditor* me, const std::vector<std::string>& args)
     g = width_assign(g, root_width, delta);
 }
 
+void console_local_da_vinci(MeshEditor* me, const std::vector<std::string> & args)
+{
+    double root_width = console_arg(args, 0, 0.15);
+//    double s = console_arg(args, 0, 1);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g  = width_assign_local_delta(g, root_width);
+}
+
+
 void console_surfacemesh_iso(MeshEditor* me, const std::vector<std::string> & args) {
     float fudge = console_arg(args, 0, 0.0f);
     size_t res = console_arg(args, 1, 32);
@@ -2438,6 +2454,15 @@ void console_surfacemesh_iso(MeshEditor* me, const std::vector<std::string> & ar
     Manifold& m = me->active_mesh();
     me->save_active_mesh();
     graph_to_mesh_iso(g, m, res, fudge, tau);
+}
+
+void console_surfacemesh_cyl(MeshEditor* me, const std::vector<std::string> & args)
+{
+    double fudge = console_arg(args, 0, 0.0);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    Manifold& m = me->active_mesh();
+    me->save_active_mesh();
+    graph_to_mesh_cyl(g, m, fudge);
 }
 // ---------------------------------
 
@@ -2564,9 +2589,13 @@ void console_surfacemesh_iso(MeshEditor* me, const std::vector<std::string> & ar
         register_console_function("graph.12_spanning_tree", console_spanning_tree, "");
         register_console_function("graph.13_vary_angles", console_vary_angles,"");
         register_console_function("graph.14_trunk_diameter",console_trunk_diameter,"");
-        register_console_function("graph.15_delta_fit",console_delta_fit,"");
-        register_console_function("graph.16_da_vinci",console_da_vinci,"");
-        register_console_function("graph.17_surfacemesh_iso", console_surfacemesh_iso, "");        //------------------------------
+        register_console_function("graph.15a_rad_per_node",console_rad_per_node,"");
+        register_console_function("graph.15b_delta_fit",console_delta_fit,"");
+        register_console_function("graph.16a_da_vinci",console_da_vinci,"");
+        register_console_function("graph.16b_local_da_vinci", console_local_da_vinci, "");
+        register_console_function("graph.17a_surfacemesh_iso", console_surfacemesh_iso, "");
+        register_console_function("graph.17b_surfacemesh_cyc", console_surfacemesh_cyl, "");
+        //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");
         active.reg(theConsole, "active_mesh", "The active mesh");

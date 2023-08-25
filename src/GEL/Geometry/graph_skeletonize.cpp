@@ -1491,7 +1491,7 @@ NodeID bottom_node_return(Geometry::AMGraph3D& g){
     cout << "root_node: " << root_node << endl;
     
     
-    
+    cout << "** finished bottom_node_return function **" << endl;
     return root_node;
 }
 
@@ -1634,6 +1634,7 @@ pair<AttribVec<NodeID, int>,AttribVec<NodeID, NodeID>> distance_to_all_nodes(Geo
             
         }
     }
+    cout << "** finished distance to all nodes function **" << endl;
     return make_pair(dist,pred);
 }
 
@@ -2429,14 +2430,13 @@ NodeID bottom_z_Node(Geometry::AMGraph3D& g){
     return index;
 }
 
-// needed for the dist_delta function
+// needed for the dist_delta function (modifed by Helen)
 vector<NodeID> next_node_func(Geometry::AMGraph3D& g){
         auto s = bottom_z_Node(g); //all other
-    //    auto s = skel_root_node(g); //branch 22
         
         NodeID next;
         int walking = 0;
-        NodeID crossings = s; // should be equal to S, which is the starting vertex
+        NodeID crossings = s;
 
         //Util::AttribVec<NodeID, int> dist(g.no_nodes(),0);
         Util::AttribVec<NodeID, int> pred(g.no_nodes()*3,0);
@@ -2452,17 +2452,12 @@ vector<NodeID> next_node_func(Geometry::AMGraph3D& g){
             double u = Q.front();
             Q.pop();
             double no_NB = g.neighbors(u).size();
-//            cout << no_NB << " no of NB" << endl;
-//            cout << "This vertex have been seen; " << seen[u] << endl;
-            
-//            g.node_color[u] = Vec3f(1,0,0);
             
             //straight branch
             if(no_NB == 2){
                 
-                //Visited this node, so we will backtrack
+                //Visited this node before, so we will backtrack
                 if(seen[u] == 0){
-//                    cout << "BT straight branch " << endl;
                     Q.push(pred[u]);
                     weight[u] += walking;
                     walking += 1;
@@ -2484,22 +2479,17 @@ vector<NodeID> next_node_func(Geometry::AMGraph3D& g){
                         }
                     }
                     
-        //            dist[u] = dist[pred[u]] + 1;
-        //
-        //            if (next != 0){ //If this is not a cycle
-//                    cout << "Going stright " << endl;
                     pred[next] = u;
                     next_node.push_back(next);
                         
                     seen[u] = 0;
         //            }
                 
-                    //CYCLE DONT HOP BACK, BUT WALK BACK
+                    //CYCLE DONT HOP BACK, BUT WALK BACK (there should not a be a cycle anymore)
                     if(check == no_NB){ //have found a cycle        ///// OBS was else if
                         seen[u] = 1;
                         walking += 1;
                         Q.push(pred[u]);
-//                        cout << "BT, found no avaliable paths in straight branch - CYCLE" << endl;
                     }
                 }
             }
@@ -2507,20 +2497,15 @@ vector<NodeID> next_node_func(Geometry::AMGraph3D& g){
             
             //at a crossing
             else if(no_NB > 2){
-//                cout <<  "At a crossing " << endl;
-                
                 //We have been at this crossing before
                 if(seen[u] == 0){
-//                    cout << "We have seen this crossing before " << endl;
-                    //assign weight/distance
                     weight[u] += walking;
-                    walking = 0;
+                    walking = 0; // WHY ZERO?!?!
                     
                     //Find the  way we havent been before
                     int check = 0;
                     for(auto t: g.neighbors(u)){
                         if(seen[t] == -1){//go in a direction in the crossing we havent been before
-//                            cout <<  "Going in a direction from the crossing " << endl;
                             Q.push(t);
                             next_node.push_back(u); //We add this "stop" to the path as well
                             next_node.push_back(t);
@@ -2533,9 +2518,7 @@ vector<NodeID> next_node_func(Geometry::AMGraph3D& g){
                         }
                     }
                     
-//                    cout << "Check val: " << check << endl;
-//                    cout << "no_NB val:  " <<no_NB << endl;
-                    //OR - backtrack again if all  directions have been met
+
                     //if BT, then carry on the weight to the prev node
                     if(check == no_NB - 1){ // all the NB have been visited before except the pred[u]
 //                        cout << "Crossing all NB visited, we BT " << endl;
@@ -2605,9 +2588,9 @@ vector<NodeID> next_node_func(Geometry::AMGraph3D& g){
     
 }
 
-
+//::::::::::::::::::::::::::::::::::::::::::::::::
 // Delta found by fitting rad to point cloud
-AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
+AMGraph3D fitting_delta(Geometry::AMGraph3D& g, double root_width){
     
     //LOADING POINT CLOUDS
     srand(0);
@@ -2672,7 +2655,7 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
     
     for(int i = 0; i < point_cloud.size(); i++){
 
-        //Find the closest node in the skeleton from a point in the point cloud
+        //Find the closest node in the skeleton from a point in the point cloude
         int no_closest = 4;
         auto position = point_cloud[i];
         double rad_dist = 1;
@@ -2711,7 +2694,7 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
     
     
 //    Find the  median rad for each node in next_node by looping over the rows in matrix
-    cout << "\n FINDING MEDIAN FOR EACH SINGLE EDGE" << endl;
+    cout << "FINDING MEDIAN FOR EACH SINGLE EDGE" << endl;
     
     
     Util::AttribVec<NodeID, float> median_dist_branch(g.no_nodes(),0);
@@ -2731,13 +2714,13 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
 //        g.node_color[i][1] = median;
     }
     
-    //cout << "median dist per node: " << endl;
-    //for(int i = 0; i < median_dist_branch.size(); i++){
+    cout << "median dist per node: " << endl;
+    for(int i = 0; i < median_dist_branch.size(); i++){
 
-      //  cout << median_dist_branch[i] <<" ";
-// //        g.node_color[i][1] = median_dist_branch[i];
+        cout << median_dist_branch[i] <<" ";
+//        g.node_color[i][1] = median_dist_branch[i];
 
-   // }
+    }
     
 
     
@@ -2751,7 +2734,6 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
     //Add the median to a sum and count number of edges passed
     int branching_no = 0;
     Util::AttribVec<NodeID, double> branching_no_list(g.no_nodes(),-1); //save the np branching the node is from the root
-    Util::AttribVec<NodeID, float> local_rad_no_list(g.no_nodes(),-1); //save the np branching the node is from the root
     Util::AttribVec<NodeID, double> ave_rad_branch(g.no_nodes(),-1); //save the ave(median) rad found for each branching top  node and end branch nodes
     int walk = 0;
     double median_sum = 0;
@@ -2768,8 +2750,6 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
             g.node_color[next_node[i]] = Vec3f(0, 1, 0);
             if(next_node[0] == node_id){ //root node
                 branching_no_list[node_id] = 0;
-                local_rad_no_list[node_id] = median_dist_branch[node_id];
-                
                 ave_rad_branch[node_id] = median_dist_branch[node_id];
                 save_ave_rad_here = node_id;
                 g.node_color[node_id] = Vec3f(0, 1, 0);
@@ -2827,7 +2807,6 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
                 branching_no += 1;
                 branching_no_list[node_id] = branching_no;
                 
-                
 //                //save ave median rad found to end node attribute list
 //                ave_rad_branch[node_id] = median_sum/walk;
 //                ave_rad_branch[save_ave_rad_here] = median_sum/walk;
@@ -2849,8 +2828,6 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
                 ave_rad_branch[node_id] = median;
                 ave_rad_branch[save_ave_rad_here] = median;
                 
-                local_rad_no_list[node_id] = median;
-                
                 
                 g.node_color[save_ave_rad_here] = Vec3f(1, 0, 0);
                 
@@ -2871,16 +2848,24 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
         }
     }
     
-    //cout << "ave rad per branching: " << endl;
+    cout << "ave rad per branching: " << endl;
     for(int i = 0; i < ave_rad_branch.size(); i++){
         
         cout << ave_rad_branch[i] <<" ";
     }
-   // cout << " branching list: " << endl;
-   // for(int i = 0; i < branching_no_list.size(); i++){
+    cout << " branching list: " << endl;
+    for(int i = 0; i < branching_no_list.size(); i++){
         
-        //cout << branching_no_list[i] <<" ";
-   // }
+        cout << branching_no_list[i] <<" ";
+    }
+    
+
+//
+//    cout << "WIERD DIST LIST????: " << endl;
+//    for(int i = 0; i < dist.size(); i++){
+//
+//        cout << dist[i] <<" ";
+//    }
     
     vector<double> delta_plot_list;
     vector<double> branch_plot_list;
@@ -2893,8 +2878,7 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
         double min_diff = 1000;
         
         //    find a banching which is not -1
-//        if(branching_no_list[i] != -1 && branching_no_list[i] != 0){ //also not the root node
-        if(local_rad_no_list[i] != -1){ //also not the root node
+        if(branching_no_list[i] != -1 && branching_no_list[i] != 0){ //also not the root node
             auto node_id = i;
             
             auto NB = g.neighbors(node_id);
@@ -2916,8 +2900,7 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
             }
             //    pop back in two vectors, one for delta, and one for branching number, then it comes in the right order for plotting
             delta_plot_list.push_back(optimal_delta);
-//            branch_plot_list.push_back(branching_no_list[i]);
-            branch_plot_list.push_back(local_rad_no_list[i]);
+            branch_plot_list.push_back(branching_no_list[i]);
             //    plot in matlab as scatter
 
         }
@@ -2941,27 +2924,22 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
         
         cout << branch_plot_list[i] <<" ";
     }
-
     
     
     
     auto max_branch = max_element(branch_plot_list.begin(), branch_plot_list.end());
-    
-    vector<double> branching_single_list;
+    vector<int> branching_single_list;
     vector<double> branching_count;
     vector<double> sum_branch_rad;
-    
-    for(int i = 0; i < 50; i++){
-        double add = (*max_branch/50)*(i);
+    for(int i = 0; i < *max_branch; i++){
         branching_count.push_back(0);
-        branching_single_list.push_back(add);
+        branching_single_list.push_back(i+1);
         sum_branch_rad.push_back(0);
     }
     
-    for(int i = 0; i < branch_plot_list.size(); i++){
-        int index = ceil(((branch_plot_list[i]/(*max_branch))*100)/2);
-        branching_count[index] += 1;
-        sum_branch_rad[index] += delta_plot_list[i];
+    for(int i = 0; i < delta_plot_list.size(); i++){
+        sum_branch_rad[branch_plot_list[i]] += delta_plot_list[i];
+        branching_count[branch_plot_list[i]] += 1;
     }
     
     for(int i = 0; i < sum_branch_rad.size(); i++){
@@ -2985,20 +2963,6 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
         cout << branching_single_list[i] <<" ";
     }
     
-    //load 50 different colours
-    vector<Vec3f> colors;
-    for(int i = 0; i < 50; i++){
-        Vec3f col = GLGraphics::get_color(i);
-        colors.push_back(col);
-    }
-    
-    for(int i = 0; i < median_dist_branch.size(); i++){
-        //The following line calculates an index based on the median distance value of each node relative to the maximum value in median_dist_branch. It is using a scaling operation to convert the distance value to an index that corresponds to the color in the colors vector. (node's color will be based on its median distance value.)
-        auto index = ceil(((median_dist_branch[i]/(*max_branch))*100)/2);
-        g.node_color[i] = colors[index];
-    }
-    
-    
     //    Assign thickness to the nodes
     for(auto i = 0; i < next_node.size(); i++ ){
         g.node_color[next_node[i]][1] = median_dist_branch[next_node[i]];
@@ -3009,192 +2973,622 @@ AMGraph3D dist_fitting_delta(Geometry::AMGraph3D& g){
     
 }
 
-AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta){ //, double s
 
-        auto s = bottom_z_Node(g);
+AMGraph3D rad_per_node(Geometry::AMGraph3D& g){
     
+// CLEANUP SKELETON
+    //Delete all lonely nodes in the skeleton
+    for(auto t: g.node_ids()){
+        double no_NB = g.neighbors(t).size();
+        if(no_NB == 0){
+            g.remove_node(t);
+            }
+        }
+    
+//BUILD KDTree of the tree skeleton (so we can use m_closest later on)
+        cout << "BUILDINGS KDTREE" << endl;
+        KDTree<Vec3d, AMGraph3D::NodeID> tree_skeleton;
+        for(auto i = 0; i < g.no_nodes(); i++ ) {
+            tree_skeleton.insert(g.pos[i], i);
+        }
+        tree_skeleton.build();
+       
+    
+//LOADING THE POINT CLOUD (PC)
+    cout << "LOADING POINT CLOUD (PC)" << endl;
+    srand(0);
+    string fn = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+    ifstream f(fn.c_str());
+    string str;
+    getline(f, str);
+    vector<Vec3d> point_cloud;
+    while(f) {
+        string str;
+        getline(f, str);
+        istringstream istr(str);
+        double x,y,z;
+        istr >> x >> y >> z;
+        if(1) {
+            Vec3d p = Vec3d(x,y,z);
+            if(!isnan(p[0])){
+                point_cloud.push_back(p);
+            }
+        }
+    }
+    cout << "Number of points in point cloud: " << point_cloud.size() << endl;
+
+    
+    int no_pointcloud_points = point_cloud.size(); // number of points in the point cloud
+    vector<double> dist_per_point(point_cloud.size(), 0); // to store distance of each PC point to its nearest edge
+    vector<NodeID> point_belong_to_node(point_cloud.size(), 0); // assigned NodeID for each point
+    
+    //for attempt to avoid 'disks'
+    vector<double> included_distances; // Distances smaller than 0.2
+    vector<pair<NodeID, double>> excluded_distances; // NodeIDs and distances >= 0.2
+
+    
+    //for every PC point
+    for(int i = 0; i < point_cloud.size(); i++){
+        int no_closest = 4;
+        auto position = point_cloud[i];
+        double rad_dist = 1;
         
-        double next;
-        int walking = 0;
-        int crossings = s;
+        // find the 4 closest nodes (within certain radius) (returns vector)
+        auto closest_skel_nodes = tree_skeleton.m_closest(no_closest, position, rad_dist);
+        
+        double min_distance = 1000;
+        NodeID closest_node = 0;
+        
+        
+        // for each of the 4 nearest nodes
+        for(const auto& j: closest_skel_nodes){
+            
+            // go through adjacent nodes (of the 4 nearest nodes)
+            for(auto n: g.neighbors(j.v)){ // 'neighbors' returns NodeIDs of all adjacent nodes to the current node ; j = one of the 4 nearest nodes, n = one of the adjacent nodes ; j.v = just for variable format?
     
-        Util::AttribVec<NodeID, int> pred(g.no_nodes()*3,0);
-        Util::AttribVec<NodeID, int> seen(g.no_nodes(),-1);
-        Util::AttribVec<NodeID, float> weight(g.no_nodes(),0);
-        vector<int> next_node;
+                LineSegment ls(g.pos[j.v], g.pos[n]); //'LineSegment' returns the distance between the current node and the currently considered adjacent node -> = edge
 
-        queue<NodeID> Q;
+                //calculate squared distance between a current PC point and the currently considered edge
+                auto lp = ls.sqr_distance(position); // returns LinProj object
+                auto distance = lp.sqr_dist; // squared distance between two node(ID)s (not necessarily connected)
 
-        Q.push(crossings); // start vertex
-
-        while(!Q.empty()){
-            double u = Q.front();
-            Q.pop();
-            double no_NB = g.neighbors(u).size();
-            cout << no_NB << " no of NB" << endl;
-            cout << "This vertex have been seen; " << seen[u] << endl;
+                if(sqrt(distance) < min_distance){ // if current distance smaller than the ones found before
+                    min_distance = sqrt(distance);      // store as min. distance
+                    closest_node = j.v;                 // store the currently considered node of the 4 nearest as the nearest node to that PC point
+                }
+            }
             
-            g.node_color[u] = Vec3f(1,0,0);
+           
+        }
+        //attempt to avoid 'disks'
+//        if (min_distance < 0.2) { // Check if the distance is smaller than 0.2
+//                    dist_per_point[i] = min_distance; // Assign to the node
+//                    point_belong_to_node[i] = closest_node;
+//                    included_distances.push_back(min_distance); // Store in the included_distances vector
+//                } else {
+//                    // Store the NodeID and distance in the excluded_distances vector
+//                    excluded_distances.push_back(make_pair(point_belong_to_node[i], min_distance));
+//                }
+        
+        dist_per_point[i] = min_distance;        // closest distances to the nearest edges of each PC point
+        point_belong_to_node[i] = closest_node;  // assigned NodeID for each PC point (assigned NodeID = the one of the initial four that the nearest edge originates from)
+    }
+    
+    cout << "Distances smaller than 0.2 assigned to nodes: " << included_distances.size() << endl;
+    cout << "Distances >= 0.2 stored in the excluded_distances vector: " << excluded_distances.size() << endl;
+    cout << "\n FINDING MEDIAN FOR EACH SINGLE EDGE" << endl;
+    
+    Util::AttribVec<NodeID, float> median_dist_branch(g.no_nodes(),0); // for storing the median distance (one float value per NodeID)
+    
+    for(auto i: g.node_ids()){ //for every node in the skeleton
+        
+        vector<float> median_find;
+        
+        for(int j = 0; j < no_pointcloud_points; j++){ //go through all PC points (probably this could be more efficient somehow?!)
             
-            //straight branch
-            if(no_NB == 2){
+            //check whether the point j belongs to the current node i
+            if(point_belong_to_node[j] == i){
+                //If the point belongs to the node, its distance to its nearest edge is added to the median_find vector
+                median_find.push_back(dist_per_point[j]);
+            }
+        }
+        //sort distances
+        sort(median_find.begin(),median_find.end());
+        float median = 0;
+        if(median_find.size() > 0){
+            median = median_find[ceil(median_find.size()/2)]; // with /5 instead of /2 -> 20% QUANTILE instead of median to compensate for the overestimation of the small branches (due to twigs missing in the skeleton)
+        }
+        
+        //  median distance for the current node i is stored (or in this case 20% quantile)
+        median_dist_branch[i] = median;
+       g.node_color[i][1] = median;
+    }
+    
+    cout << "median dist per node: " << endl;
+    for(int i = 0; i < median_dist_branch.size(); i++){
+
+       cout << median_dist_branch[i] <<" ";
+        g.node_color[i][1] = median_dist_branch[i]; // assigned thickness is stored in the color attribute of the node
+
+    }
+    
+    return g;
+    
+}
+
+//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+// my version!
+AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta){
+    
+    // check whether delta was passed correctly to the function
+    cout << "delta " << delta << endl;
+    auto exponent = 1.0/delta;
+    cout << "exponent " << exponent << endl;
+    
+    //root node for the algorithm
+    auto s = bottom_z_Node(g);
+    
+    //defining needed variables
+    NodeID next; //changed from double to nodeID
+    int walking = 0;
+    NodeID crossings = s; //changed from int to nodeID
+    
+    Util::AttribVec<NodeID, int> dist(g.no_nodes(),0); //added
+    Util::AttribVec<NodeID, NodeID> pred(g.no_nodes(),0); //removed *3 and changed int to NodeID
+    Util::AttribVec<NodeID, int> seen(g.no_nodes(),-1);
+    Util::AttribVec<NodeID, float> weight(g.no_nodes(),0);
+    vector<int> next_node;
+
+    queue<NodeID> Q;
+    Q.push(crossings); // start vertex
+
+    while(!Q.empty()){
+        double u = Q.front();
+        Q.pop();
+        double no_NB = g.neighbors(u).size();
+        //cout << no_NB << " no of NB" << endl;
+        //cout << "This vertex have been seen; " << seen[u] << endl;
+        //g.node_color[u] = Vec3f(1,0,0);
+        
+        ///STOPPED HERE WITH MODIFYING
+        
+        if(no_NB == 2){ //straight?
+            
+            //Visited this node, so we will backtrack
+            if(seen[u] == 0){
+                cout << "BT straight branch " << endl;
+                Q.push(pred[u]);
+                weight[u] += walking;    //SO IN THEROY IT SHOULD NOT BE ZERO FOR THE STEM?!?!
+                walking += 1;
+                seen[u] =  1;
+            }
+           
+            //Not visited at all before, so we find the next vertex
+            if(seen[u] == -1){
+                int check = 0;
+                double next = 0;
+                for(auto t: g.neighbors(u)){ //go in the  right direction, the one not visited before
+                    if(seen[t] == -1){
+                        cout <<  "At a straight edge part " << endl;
+                        Q.push(t);
+                        next = t;
+                    }
+                    else if(seen[t] != -1){
+                        check += 1;
+                    }
+                }
                 
-                //Visited this node, so we will backtrack
-                if(seen[u] == 0){
-                    cout << "BT straight branch " << endl;
-                    Q.push(pred[u]);
-                    weight[u] += walking;
+   
+                cout << "Going stright " << endl;
+                pred[next] = u;
+                next_node.push_back(next);
+                    
+                seen[u] = 0;
+   
+                //CYCLE DONT HOP BACK, BUT WALK BACK
+                if(check == no_NB){ //have found a cycle        ///// OBS was else if
+                    seen[u] = 1;
                     walking += 1;
-                    seen[u] =  1;
-                }
-               
-                //Not visited at all before, so we find the next vertex
-                if(seen[u] == -1){
-                    int check = 0;
-                    double next = 0;
-                    for(auto t: g.neighbors(u)){ //go in the  right direction, the one not visited before
-                        if(seen[t] == -1){
-                            cout <<  "At a straight edge part " << endl;
-                            Q.push(t);
-                            next = t;
-                        }
-                        else if(seen[t] != -1){
-                            check += 1;
-                        }
-                    }
-                    
-        //            dist[u] = dist[pred[u]] + 1;
-        //
-        //            if (next != 0){ //If this is not a cycle
-                    cout << "Going stright " << endl;
-                    pred[next] = u;
-                    next_node.push_back(next);
-                        
-                    seen[u] = 0;
-        //            }
-                
-                    //CYCLE DONT HOP BACK, BUT WALK BACK
-                    if(check == no_NB){ //have found a cycle        ///// OBS was else if
-                        seen[u] = 1;
-                        walking += 1;
-                        Q.push(pred[u]);
-                        cout << "BT, found no avaliable paths in straight branch - CYCLE" << endl;
-                    }
+                    Q.push(pred[u]);
+                    cout << "BT, found no avaliable paths in straight branch - CYCLE" << endl;
                 }
             }
+        }
+        
+        
+        //at a crossing
+        else if(no_NB > 2){
+            cout <<  "At a crossing " << endl;
             
-            
-            //at a crossing
-            else if(no_NB > 2){
-                cout <<  "At a crossing " << endl;
+            //We have been at this crossing before
+            if(seen[u] == 0){
+                cout << "We have seen this crossing before " << endl;
+                //assign weight/distance
+                weight[u] += walking;
+                walking = 0;
                 
-                //We have been at this crossing before
-                if(seen[u] == 0){
-                    cout << "We have seen this crossing before " << endl;
-                    //assign weight/distance
-                    weight[u] += walking;
-                    walking = 0;
-                    
-                    //Find the  way we havent been before
-                    int check = 0;
-                    for(auto t: g.neighbors(u)){
-                        if(seen[t] == -1){//go in a direction in the crossing we havent been before
-                            cout <<  "Going in a direction from the crossing " << endl;
-                            Q.push(t);
-                            next_node.push_back(u); //We add this "stop" to the path as well
-                            next_node.push_back(t);
-                            seen[u] = 0;
-                            pred[t] = u;
-                            break;
-                        }
-                        else if(seen[t] == 1){
-                            check += 1;
-                        }
-                    }
-                    
-                    cout << "Check val: " << check << endl;
-                    cout << "no_NB val:  " <<no_NB << endl;
-                    //OR - backtrack again if all  directions have been met
-                    //if BT, then carry on the weight to the prev node
-                    if(check == no_NB - 1){ // all the NB have been visited before except the pred[u]
-                        cout << "Crossing all NB visited, we BT " << endl;
-        //                weight[u] += walking;
-                        walking = weight[u];
-                        seen[u] = 1;
-                        Q.push(pred[u]);
-                    }
-                }
-                
-                
-                //We have not seen crossing before
-                if(seen[u] == -1){
-                    cout << "NOT seen this crossing before "<< endl;
-                    for(auto t: g.neighbors(u)){ //go in a direction in the crossing we havent been before
-                        if(seen[t] == -1){
-                            cout <<  "Going in a direction from the crossing " << endl;
-                            Q.push(t);
-                            next_node.push_back(t);
-                            seen[u] = 0;
-                            pred[t] = u;
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            //At the start vertex
-            else if (no_NB == 1){
-                // If the vertex is the start vertex S
-                //go in the  right direction, the one not visited before
-                if(u == s ){
-                    
-                    if(seen[u] == 0){//We have finished traversal  of  the tree
-                        cout << "Finished traversal " << endl;
-                        weight[u] += walking;
+                //Find the  way we havent been before
+                int check = 0;
+                for(auto t: g.neighbors(u)){
+                    if(seen[t] == -1){//go in a direction in the crossing we havent been before
+                        cout <<  "Going in a direction from the crossing " << endl;
+                        Q.push(t);
+                        next_node.push_back(u); //We add this "stop" to the path as well
+                        next_node.push_back(t);
+                        seen[u] = 0;
+                        pred[t] = u;
                         break;
                     }
-                    
-                    else{
-                        cout <<  "found start vertex " << endl;
-                        double t;
-                        for(auto w: g.neighbors(u)){ t = w; }
-                            Q.push(t);
-                            next = t;
-                            pred[next] = u;
-                            next_node.push_back(u);
-                            next_node.push_back(next);
-                            seen[u] = 0;
+                    else if(seen[t] == 1){
+                        check += 1;
                     }
                 }
                 
-                //At branch ends - start backtracking
-                else if(seen[u] == -1){ //HERE - DONT HOP BACK, BUT WALK BACK
-                    cout <<  "at the end of a branch " << endl;
-        //            dist[u] = dist[pred[u]] + 1;
+                cout << "Check val: " << check << endl;
+                cout << "no_NB val:  " <<no_NB << endl;
+                //OR - backtrack again if all  directions have been met
+                //if BT, then carry on the weight to the prev node
+                if(check == no_NB - 1){ // all the NB have been visited before except the pred[u]
+                    cout << "Crossing all NB visited, we BT " << endl;
+    //                weight[u] += walking;
+                    walking = weight[u];
                     seen[u] = 1;
-                    walking = 1; // +=
-                    weight[u] = walking;
-                    cout << "Pred to this u  branch end: " << pred[u] << endl;
                     Q.push(pred[u]);
                 }
             }
+            
+            
+            //We have not seen crossing before
+            if(seen[u] == -1){
+                cout << "NOT seen this crossing before "<< endl;
+                for(auto t: g.neighbors(u)){ //go in a direction in the crossing we havent been before
+                    if(seen[t] == -1){
+                        cout <<  "Going in a direction from the crossing " << endl;
+                        Q.push(t);
+                        next_node.push_back(t);
+                        seen[u] = 0;
+                        pred[t] = u;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        //At the start vertex
+        else if (no_NB == 1){
+            // If the vertex is the start vertex S
+            //go in the  right direction, the one not visited before
+            if(u == s ){
+                
+                if(seen[u] == 0){//We have finished traversal  of  the tree
+                    cout << "Finished traversal " << endl;
+                    weight[u] += walking;
+                    break;
+                }
+                
+                else{
+                    cout <<  "found start vertex " << endl;
+                    double t;
+                    for(auto w: g.neighbors(u)){ t = w; }
+                        Q.push(t);
+                        next = t;
+                        pred[next] = u;
+                        next_node.push_back(u);
+                        next_node.push_back(next);
+                        seen[u] = 0;
+                }
+            }
+            
+            //At branch ends - start backtracking
+            else if(seen[u] == -1){ //HERE - DONT HOP BACK, BUT WALK BACK
+                cout <<  "at the end of a branch " << endl;
+    //            dist[u] = dist[pred[u]] + 1;
+                seen[u] = 1;
+                walking = 1; // +=
+                weight[u] = walking;
+                cout << "Pred to this u  branch end: " << pred[u] << endl;
+                Q.push(pred[u]);
+            }
+        }
+    }
+
+        
+        //Delete all lonley point
+        for(auto t: g.node_ids()){
+            double no_NB = g.neighbors(t).size();
+            if(no_NB == 0){
+                g.remove_node(t);
+                }
         }
 
-            
-            //Delete all lonley point
-            for(auto t: g.node_ids()){
-                double no_NB = g.neighbors(t).size();
-                if(no_NB == 0){
-                    g.remove_node(t);
-                    }
+
+    for(auto i = 0; i < next_node.size(); i++ ) {
+        cout << weight[next_node[i]] << " ";
+        //cout << weight[i] << " ";
+    }
+
+    
+    
+
+    //:------------------------------------------------------------:
+    // end finding information, now assign thickness using the information
+    
+    
+    
+    //BEFORE //////////
+    float radius= root_width; //optimal rad=0.18 ish
+
+    Util::AttribVec<NodeID, float> thickness(g.no_nodes(),0);
+    Util::AttribVec<NodeID, float> seen2(next_node.size(),0);
+
+
+
+    //make a vector which saves wether the cross have been visited before, if it has, then take that saved rad there
+    //RN it goes on with the thin rad from the brancesends
+    //obs on the seen vectors, they are fucked too, dont just use i
+
+
+//Loop over the size og next_node vector, to assign all the nodes with a thickness
+    for(auto i = 0; i < next_node.size(); i++ ){
+        //Check whether the node is a  crossing or not
+        double no_NB = g.neighbors(next_node[i]).size();
+
+        //END or STRAIGHT branch
+        if(no_NB <= 2){
+            cout <<  "Node nr " << i << " thickness " << radius << endl;
+            thickness[next_node[i]] = radius;
+            seen2[next_node[i]] = 1;
+        }
+
+        //CROSSING
+        else if(no_NB > 2){
+            cout <<"cross !!!!!!" << endl;
+
+            if(seen2[next_node[i]] == 0){
+                cout <<"Not seen" << endl;
+                seen2[next_node[i]] = 1;
+                thickness[next_node[i]] = radius;
+
             }
 
+            else if(seen2[next_node[i]] != 0){
+                cout <<"SEEN" << endl;
+                radius = thickness[next_node[i]];
 
-        for(auto i = 0; i < next_node.size(); i++ ) {
-            cout << weight[next_node[i]] << " ";
-            //cout << weight[i] << " ";
+            }
+            //Assign this corssing with the radius of the prev node
+
+            cout <<  "Node nr " << i << " thickness cross " << radius << endl;
+
+            //Redefine radius for the next node
+            cout << "next weight " << weight[next_node[i+1]] << endl;
+            cout << "current weight " << weight[next_node[i]] << endl;
+            cout << "rad now " << radius  << endl;
+
+
+//            radius = sqrt((weight[next_node[i+1]])/weight[next_node[i]])*radius;     //delta = 2
+
+//            radius = (pow(((weight[next_node[i+1]])/weight[next_node[i]]),(0.5555555556)))*radius;     //delta = 1.8  5/9
+//            radius = (pow(((weight[next_node[i+1]])/weight[next_node[i]]),(0.5263157895)))*radius;;     //delta = 1.9    10/19
+//            radius = (pow(((weight[next_node[i+1]])/weight[next_node[i]]),(0.4761904762)))*radius;;     //delta = 2.1    10/21
+//            radius = (pow(((weight[next_node[i+1]])/weight[next_node[i]]),(0.4545454545)))*radius;;     //delta = 2.2    5/11
+
+            radius = (pow(((weight[next_node[i+1]])/weight[next_node[i]]),exponent))*radius;;     //delta = 2.3
+            cout <<  "Next rad is " << radius << endl;
+
+        }
+    }
+ 
+        
+    
+//    Assign thickness to the nodes
+    for(auto i = 0; i < next_node.size(); i++ ){
+        g.node_color[next_node[i]][1] = thickness[next_node[i]];
+    }
+    
+
+
+    for(auto i = 0; i < next_node.size(); i++ ) {
+        cout << thickness[next_node[i]] << " ";
+        //cout << weight[i] << " ";
+    }
+    
+    
+
+    
+    return g;
+    
+}
+
+AMGraph3D width_assign_local_delta(Geometry::AMGraph3D& g, double root_width){ //, double s
+
+    auto s = bottom_z_Node(g); //all other
+//    auto s = skel_root_node(g); //branch 22
+    
+    double next;
+    int walking = 0;
+    int crossings = s; // should be equal to S, which is the starting vertex
+
+    //Util::AttribVec<NodeID, int> dist(g.no_nodes(),0);
+    Util::AttribVec<NodeID, int> pred(g.no_nodes()*3,0);
+    Util::AttribVec<NodeID, int> seen(g.no_nodes(),-1);
+    Util::AttribVec<NodeID, float> weight(g.no_nodes(),0);
+    vector<int> next_node;
+
+    queue<NodeID> Q;
+
+    Q.push(crossings); // start vertex
+
+    while(!Q.empty()){
+        double u = Q.front();
+        Q.pop();
+        double no_NB = g.neighbors(u).size();
+        cout << no_NB << " no of NB" << endl;
+        cout << "This vertex have been seen; " << seen[u] << endl;
+        
+        g.node_color[u] = Vec3f(1,0,0);
+        
+        //straight branch
+        if(no_NB == 2){
+            
+            //Visited this node, so we will backtrack
+            if(seen[u] == 0){
+                cout << "BT straight branch " << endl;
+                Q.push(pred[u]);
+                weight[u] += walking;
+                walking += 1;
+                seen[u] =  1;
+            }
+           
+            //Not visited at all before, so we find the next vertex
+            if(seen[u] == -1){
+                int check = 0;
+                double next = 0;
+                for(auto t: g.neighbors(u)){ //go in the  right direction, the one not visited before
+                    if(seen[t] == -1){
+                        cout <<  "At a straight edge part " << endl;
+                        Q.push(t);
+                        next = t;
+                    }
+                    else if(seen[t] != -1){
+                        check += 1;
+                    }
+                }
+                
+    //            dist[u] = dist[pred[u]] + 1;
+    //
+    //            if (next != 0){ //If this is not a cycle
+                cout << "Going stright " << endl;
+                pred[next] = u;
+                next_node.push_back(next);
+                    
+                seen[u] = 0;
+    //            }
+            
+                //CYCLE DONT HOP BACK, BUT WALK BACK
+                if(check == no_NB){ //have found a cycle        ///// OBS was else if
+                    seen[u] = 1;
+                    walking += 1;
+                    Q.push(pred[u]);
+                    cout << "BT, found no avaliable paths in straight branch - CYCLE" << endl;
+                }
+            }
+        }
+        
+        
+        //at a crossing
+        else if(no_NB > 2){
+            cout <<  "At a crossing " << endl;
+            
+            //We have been at this crossing before
+            if(seen[u] == 0){
+                cout << "We have seen this crossing before " << endl;
+                //assign weight/distance
+                weight[u] += walking;
+                walking = 0;
+                
+                //Find the  way we havent been before
+                int check = 0;
+                for(auto t: g.neighbors(u)){
+                    if(seen[t] == -1){//go in a direction in the crossing we havent been before
+                        cout <<  "Going in a direction from the crossing " << endl;
+                        Q.push(t);
+                        next_node.push_back(u); //We add this "stop" to the path as well
+                        next_node.push_back(t);
+                        seen[u] = 0;
+                        pred[t] = u;
+                        break;
+                    }
+                    else if(seen[t] == 1){
+                        check += 1;
+                    }
+                }
+                
+                cout << "Check val: " << check << endl;
+                cout << "no_NB val:  " <<no_NB << endl;
+                //OR - backtrack again if all  directions have been met
+                //if BT, then carry on the weight to the prev node
+                if(check == no_NB - 1){ // all the NB have been visited before except the pred[u]
+                    cout << "Crossing all NB visited, we BT " << endl;
+    //                weight[u] += walking;
+                    walking = weight[u];
+                    seen[u] = 1;
+                    Q.push(pred[u]);
+                }
+            }
+            
+            
+            //We have not seen crossing before
+            if(seen[u] == -1){
+                cout << "NOT seen this crossing before "<< endl;
+                for(auto t: g.neighbors(u)){ //go in a direction in the crossing we havent been before
+                    if(seen[t] == -1){
+                        cout <<  "Going in a direction from the crossing " << endl;
+                        Q.push(t);
+                        next_node.push_back(t);
+                        seen[u] = 0;
+                        pred[t] = u;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        //At the start vertex
+        else if (no_NB == 1){
+            // If the vertex is the start vertex S
+            //go in the  right direction, the one not visited before
+            if(u == s ){
+                
+                if(seen[u] == 0){//We have finished traversal  of  the tree
+                    cout << "Finished traversal " << endl;
+                    weight[u] += walking;
+                    break;
+                }
+                
+                else{
+                    cout <<  "found start vertex " << endl;
+                    double t;
+                    for(auto w: g.neighbors(u)){ t = w; }
+                        Q.push(t);
+                        next = t;
+                        pred[next] = u;
+                        next_node.push_back(u);
+                        next_node.push_back(next);
+                        seen[u] = 0;
+                }
+            }
+            
+            //At branch ends - start backtracking
+            else if(seen[u] == -1){ //HERE - DONT HOP BACK, BUT WALK BACK
+                cout <<  "at the end of a branch " << endl;
+    //            dist[u] = dist[pred[u]] + 1;
+                seen[u] = 1;
+                walking = 1; // +=
+                weight[u] = walking;
+                cout << "Pred to this u  branch end: " << pred[u] << endl;
+                Q.push(pred[u]);
+            }
+        }
+    }
+
+        
+        //Delete all lonley point
+        for(auto t: g.node_ids()){
+            double no_NB = g.neighbors(t).size();
+            if(no_NB == 0){
+                g.remove_node(t);
+                }
         }
 
+
+    for(auto i = 0; i < next_node.size(); i++ ) {
+        cout << weight[next_node[i]] << " ";
+        //cout << weight[i] << " ";
+    }
+
+    
+    
 
     //:------------------------------------------------------------:
     // end finding information, now assign thickness using the information
@@ -3205,6 +3599,32 @@ AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta){
     Util::AttribVec<NodeID, float> seen2(next_node.size(),0);
     
     
+    //CALCULATING DELTA AS FUNCTION OF RAD
+    //from plot we see delta goes from 1.95 at root rad to 4.21 at 0 rad
+    //we split into  200 delta vlues by index
+    
+//    vector<float> delta_values;
+//
+//    float split = (4.21 - 1.95)/200;
+//    for(float i = 0; i < 200; i++){
+//        delta_values.push_back(1.95 + (split*i));
+//    }
+    
+    
+    //q20
+//    vector<float> delta_values{1.99285252524345   , 1.99818242839334  ,  2.00983246752115  ,  2.02780264262687 ,   2.05209295371050  ,  2.08270340077204,    2.11963398381149,    2.16288470282886   , 2.21245555782414 ,   2.26834654879733 ,   2.33055767574843  ,  2.39908893867744  ,  2.47394033758436  ,  2.55511187246920 ,   2.64260354333195   , 2.73641535017260   , 2.83654729299118  ,  2.94299937178766 ,   3.05577158656205 ,   3.17486393731436   , 3.30027642404458   , 3.43200904675271  ,  3.57006180543875  ,  3.71443470010270  ,  3.86512773074457  ,  4.02214089736434  ,  4.18547419996203  ,  4.35512763853763  ,  4.53110121309114  ,  4.71339492362257};
+    
+    
+    
+    //q33
+//    vector<float> delta_values{2.17281061294906  ,  2.24892736200639  ,  2.32504411106373 ,  2.40116086012106   , 2.47727760917839  ,  2.55339435823572  ,  2.62951110729306 ,   2.70562785635039,    2.78174460540772   , 2.85786135446505   , 2.93397810352239 ,   3.01009485257972  ,  3.08621160163705  ,  3.16232835069438 ,   3.23844509975172,    3.31456184880905  ,  3.39067859786638   , 3.46679534692371 ,   3.54291209598105  ,  3.61902884503838  ,  3.69514559409571   , 3.77126234315304  ,  3.84737909221038  ,  3.92349584126771    ,3.99961259032504  ,  4.07572933938237    ,4.15184608843971   , 4.22796283749704  ,  4.30407958655437 ,   4.38019633561170};
+    
+    
+    
+    //q50
+    vector<float> delta_values{2.05216839358044 ,   2.08470301268128    ,2.12094428394027  ,  2.16089220735742   , 2.20454678293273   , 2.25190801066619  ,  2.30297589055781   , 2.35775042260758   , 2.41623160681551  ,  2.47841944318160  ,  2.54431393170585  ,  2.61391507238825  ,  2.68722286522881  ,  2.76423731022752   , 2.84495840738439  ,  2.92938615669942  ,  3.01752055817260   , 3.10936161180394  ,  3.20490931759344  ,  3.30416367554109   , 3.40712468564690  ,  3.51379234791087 ,   3.62416666233299  ,  3.73824762891327   , 3.85603524765170   , 3.97752951854830   , 4.10273044160304  ,  4.23163801681595   , 4.36425224418701  ,  4.50057312371623};
+    
+//    {1.42901591319233 , 1.74881304826324,2.02741893919799  , 2.26780034995299 , 2.47292404448462 , 2.64575678674927  , 2.78926534070331  ,  2.90641647030315, 3.00017693950516,3.07351351226574, 3.12939295254126 , 3.17078202428812, 3.20064749146271,3.22195611802140 , 3.23767466792059,    3.25076990511667,3.26420859356602 ,3.28095749722502 ,3.30398338005007 , 3.33625300599755 , 3.38073313902385 ,3.44039054308535 , 3.51819198213844,    3.61710422013952,3.74009402104495,3.89012814881114,4.07017336739447,4.28319644075132 ,4.53216413283809,4.82004320761115};
     
     //make a vector which saves wether the cross have been visited before, if it has, then take that saved rad there
     //RN it goes on with the thin rad from the brancesends
@@ -3248,10 +3668,17 @@ AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta){
             cout << "current weight " << weight[next_node[i]] << endl;
             cout << "rad now " << radius  << endl;
             
-
-            radius = (pow(((weight[next_node[i+1]])/weight[next_node[i]]),1/delta))*radius;;     //delta = 2.3
-
+            auto index = ceil((1 - (radius/root_width))*30);
+            if(index == 30){
+                index = 29;
+            }
+            double exponent = delta_values[index];
             
+            cout <<  "INDEX " << index << " and delta " << delta_values[index] <<endl;
+            cout <<  "delta list  size " << delta_values.size() << endl;
+            
+            radius = (pow(((weight[next_node[i+1]])/weight[next_node[i]]),(1/exponent)))*radius;;     //delta = 2.3
+
 
             cout <<  "Next rad is " << radius << endl;
 
@@ -3274,13 +3701,17 @@ AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta){
         //cout << weight[i] << " ";
     }
     
+    for(auto i = 0; i < delta_values.size(); i++ ) {
+        cout << delta_values[i]<< " ";
+        //cout << weight[i] << " ";
+    }
+    
     
 
     
     return g;
     
 }
-
 
 }
 

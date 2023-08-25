@@ -287,66 +287,120 @@ AMGraph3D graph_from_points(const string& file_name, double rad, int N_closest)
         return 3*t*t-2*t*t*t;
     }
 
-    void graph_to_mesh_iso(const AMGraph3D& g, Manifold& m, size_t grid_res, float fudge, float tau) {
-        
-        double rad_max = 0.0;
-        Vec3d pmin(1e32), pmax(-1e32);
-        for(auto n: g.node_ids())
-            if(g.valid_node_id(n)) {
-                Vec3d p = g.pos[n];
-                double r = g.node_color[n][1];
-                rad_max = max(r, rad_max);
-                if(!std::isnan(p[0])) {
-                    pmin = v_min(p, pmin);
-                    pmax = v_max(p, pmax);
-                }
+//IDA's GEL VERSION
+void graph_to_mesh_iso(const AMGraph3D& g, Manifold& m, size_t grid_res, float fudge, float tau) {
+
+    Vec3d pmin(1e32), pmax(-1e32);
+    for(auto n: g.node_ids())
+        if(g.valid_node_id(n)) {
+            Vec3d p = g.pos[n];
+            if(!isnan(p[0])) {
+                pmin = v_min(p, pmin);
+                pmax = v_max(p, pmax);
             }
-        rad_max += fudge;
-        pmax += Vec3d(rad_max);
-        pmin -= Vec3d(rad_max);
-        Vec3d ratios = pmax-pmin;
-        double long_side = ratios.max_coord();
-        ratios /= long_side;
-        Vec3i dim = Vec3i(double(grid_res)*ratios);
-        RGrid<float> grid(dim,1e32);
-        XForm xform(pmin, pmax, dim, 0.05);
-
-        for(auto n : g.node_ids()) if (g.in_use(n)) {
-            for(auto m : g.neighbors(n))
-                if(n<m) {
-                    LineSegment ls(g.pos[n], g.pos[m]);
-                    float rad_n = g.node_color[n][1] + fudge;
-                    float rad_m = g.node_color[m][1] + fudge;
-                    float rad_upper = 1.5*max(rad_n,rad_m);
-                    Vec3d bbmin = v_min(g.pos[n],g.pos[m])-Vec3d(rad_upper);
-                    Vec3d bbmax = v_max(g.pos[n],g.pos[m])+Vec3d(rad_upper);
-                    Vec3i bbmin_i = v_min(dim - Vec3i(1), v_max(Vec3i(0), Vec3i(xform.apply(bbmin))));
-                    Vec3i bbmax_i = v_min(dim - Vec3i(1), v_max(Vec3i(0), Vec3i(xform.apply(bbmax))));
-
-                    for(Vec3i pi: Range3D(bbmin_i,bbmax_i))  {
-                        Vec3d p = xform.inverse(Vec3d(pi));
-                        auto lp = ls.sqr_distance(p);
-                        auto t = smooth_step(0.0, 1.0, lp.t);
-                        float rad = rad_n * (1.0 - t) + rad_m * t;
-                        grid[pi] = min(grid[pi],float(sqrt(lp.sqr_dist)-rad));
-                    }
-                }
         }
-        
-//        GraphDist gd(g);
-//
-//        for(Vec3i pi: Range3D(Vec3i(0), dim))  {
-//            Vec3d p = xform.inverse(Vec3d(pi));
-//            grid[pi] = gd.dist(p)-fudge;
-//        }
+    Vec3d ratios = pmax-pmin;
+    double long_side = ratios.max_coord();
+    ratios /= long_side;
+    Vec3i dim = Vec3i(double(grid_res)*ratios);
+    RGrid<float> grid(dim,0.0);
+    XForm xform(pmin, pmax, dim, 0.05);
 
-                
-        cout << "Done!" << endl;
-        cout << "Meshing ..." << endl;
-        cout << grid.get_dims() << endl;
-        volume_polygonize(xform, grid, m, tau, true, false);
-        cout << "Done!" << endl;
+    for(auto n : g.node_ids()) {
+        for(auto m : g.neighbors(n))
+            if(g.valid_node_id(n) && g.valid_node_id(m) && n<m) {
+                LineSegment ls(g.pos[n], g.pos[m]);
+                float rad_n = g.node_color[n][1] + fudge;
+                float rad_m = g.node_color[m][1] + fudge;
+                float rad_upper = 1.5*max(rad_n,rad_m);
+                Vec3d bbmin = v_min(g.pos[n],g.pos[m])-Vec3d(rad_upper);
+                Vec3d bbmax = v_max(g.pos[n],g.pos[m])+Vec3d(rad_upper);
+                Vec3i bbmin_i = v_min(dim - Vec3i(1), v_max(Vec3i(0), Vec3i(xform.apply(bbmin))));
+                Vec3i bbmax_i = v_min(dim - Vec3i(1), v_max(Vec3i(0), Vec3i(xform.apply(bbmax))));
+
+//                cout << bbmin << bbmax << bbmin_i << bbmax_i << endl;
+                for(size_t zi=bbmin_i[2];zi< bbmax_i[2]; ++zi)
+                    for(size_t yi=bbmin_i[1];yi< bbmax_i[1]; ++yi)
+                        for(size_t xi=bbmin_i[0];xi< bbmax_i[0]; ++xi) {
+                            Vec3i pi(xi, yi, zi);
+                            Vec3d p = xform.inverse(Vec3d(pi));
+                            auto lp = ls.sqr_distance(p);
+                            auto t = smooth_step(0.0, 1.0, lp.t);
+                            float rad = rad_n * (1.0 - t) + rad_m * t;
+                            grid[pi] = max(grid[pi],float(exp(-2.0*lp.sqr_dist/sqr(rad))));
+                        }
+            }
     }
+
+    cout << "Done!" << endl;
+    cout << "Meshing ..." << endl;
+
+    volume_polygonize(xform, grid, m, tau, false);
+    cout << "Done!" << endl;
+}
+
+
+//NEW VERSION
+//    void graph_to_mesh_iso(const AMGraph3D& g, Manifold& m, size_t grid_res, float fudge, float tau) {
+//
+//        double rad_max = 0.0;
+//        Vec3d pmin(1e32), pmax(-1e32);
+//        for(auto n: g.node_ids())
+//            if(g.valid_node_id(n)) {
+//                Vec3d p = g.pos[n];
+//                double r = g.node_color[n][1];
+//                rad_max = max(r, rad_max);
+//                if(!std::isnan(p[0])) {
+//                    pmin = v_min(p, pmin);
+//                    pmax = v_max(p, pmax);
+//                }
+//            }
+//        rad_max += fudge;
+//        pmax += Vec3d(rad_max);
+//        pmin -= Vec3d(rad_max);
+//        Vec3d ratios = pmax-pmin;
+//        double long_side = ratios.max_coord();
+//        ratios /= long_side;
+//        Vec3i dim = Vec3i(double(grid_res)*ratios);
+//        RGrid<float> grid(dim,1e32);
+//        XForm xform(pmin, pmax, dim, 0.05);
+//
+//        for(auto n : g.node_ids()) if (g.in_use(n)) {
+//            for(auto m : g.neighbors(n))
+//                if(n<m) {
+//                    LineSegment ls(g.pos[n], g.pos[m]);
+//                    float rad_n = g.node_color[n][1] + fudge;
+//                    float rad_m = g.node_color[m][1] + fudge;
+//                    float rad_upper = 1.5*max(rad_n,rad_m);
+//                    Vec3d bbmin = v_min(g.pos[n],g.pos[m])-Vec3d(rad_upper);
+//                    Vec3d bbmax = v_max(g.pos[n],g.pos[m])+Vec3d(rad_upper);
+//                    Vec3i bbmin_i = v_min(dim - Vec3i(1), v_max(Vec3i(0), Vec3i(xform.apply(bbmin))));
+//                    Vec3i bbmax_i = v_min(dim - Vec3i(1), v_max(Vec3i(0), Vec3i(xform.apply(bbmax))));
+//
+//                    for(Vec3i pi: Range3D(bbmin_i,bbmax_i))  {
+//                        Vec3d p = xform.inverse(Vec3d(pi));
+//                        auto lp = ls.sqr_distance(p);
+//                        auto t = smooth_step(0.0, 1.0, lp.t);
+//                        float rad = rad_n * (1.0 - t) + rad_m * t;
+//                        grid[pi] = min(grid[pi],float(sqrt(lp.sqr_dist)-rad));
+//                    }
+//                }
+//        }
+//
+////        GraphDist gd(g);
+////
+////        for(Vec3i pi: Range3D(Vec3i(0), dim))  {
+////            Vec3d p = xform.inverse(Vec3d(pi));
+////            grid[pi] = gd.dist(p)-fudge;
+////        }
+//
+//
+//        cout << "Done!" << endl;
+//        cout << "Meshing ..." << endl;
+//        cout << grid.get_dims() << endl;
+//        volume_polygonize(xform, grid, m, tau, true, false);
+//        cout << "Done!" << endl;
+//    }
 
 
     void graph_to_mesh_cyl(const AMGraph3D& g, HMesh::Manifold& m, float fudge) {
