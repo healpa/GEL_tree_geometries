@@ -226,6 +226,7 @@ Geometry::AMGraph3D rad_per_node(Geometry::AMGraph3D& g);
 Geometry::AMGraph3D fitting_delta(Geometry::AMGraph3D& g, double root_width);
 Geometry::AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta);
 Geometry::AMGraph3D width_assign_local_delta(Geometry::AMGraph3D& g, double root_width);
+void error_function(Geometry::AMGraph3D& g, HMesh::Manifold& m, double root_width, double delta, int filter);
 // -----------------------------
 
 }

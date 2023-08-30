@@ -2033,6 +2033,90 @@ namespace GLGraphics {
 
 // ---------- Edits Helen ----------
 
+// ALL IN ONE FUNCTION to go from a point cloud to a reconnected and spannin skeleton
+
+//All for reading in the input.txt file
+struct Parameters {
+    std::string pathToPointCloud;
+    double reconnectingAngleStraight;
+    double reconnectingAngleBranching;
+    int nClosest;
+    double radConnect;
+};
+
+void processParameters(const Parameters& params) {
+    // more parameters to add: number of NB to connect to, max. radius for connections, levels for saturating, minimum number of NB in the graph (otherwise considered outlier, distance threshold for graph_edge_contract
+    string filePath = params.pathToPointCloud;
+    double reconnectingAngleStraight = params.reconnectingAngleStraight;
+    double reconnectingAngleBranching = params.reconnectingAngleBranching;
+    int nClosest = params.nClosest;
+    double radConnect = params.radConnect;
+    
+    std::cout << "Path to point cloud: " << filePath << std::endl;
+    std::cout << "Number of neighbouring points to connect when creating graph: " << nClosest << std::endl;
+    std::cout << "Maximum radius for connecting points: " << radConnect << std::endl;
+    std::cout << "Reconnecting angle for complex branches: " << reconnectingAngleBranching << std::endl;
+    std::cout << "Reconnecting angle for straight branches: " << reconnectingAngleStraight << std::endl;
+    
+}
+
+Parameters readParametersFromFile() {
+    Parameters params;
+
+    // Open the input file for reading
+    std::ifstream inputFile("/Users/healpa/Desktop/input.txt");
+
+    // Check if the input file is open successfully
+    if (!inputFile.is_open()) {
+        std::cerr << "Error: Unable to open input file." << std::endl;
+        return params; // Return empty parameters
+    }
+
+    std::string line;
+    while (std::getline(inputFile, line)) {
+        if (line.find("path to point cloud:") != std::string::npos) {
+            params.pathToPointCloud = line.substr(line.find(":") + 2);
+        } else if (line.find("reconnecting angle - straight:") != std::string::npos) {
+            params.reconnectingAngleStraight = std::stod(line.substr(line.find(":") + 2));
+        } else if (line.find("reconnecting angle - branching:") != std::string::npos) {
+            params.reconnectingAngleBranching = std::stod(line.substr(line.find(":") + 2));
+        } else if (line.find("closest points to connect to:") != std::string::npos) {
+            params.nClosest = std::stod(line.substr(line.find(":") + 2));
+        } else if (line.find("maximum radius for connecting [m]:") != std::string::npos) {
+            params.radConnect = std::stod(line.substr(line.find(":") + 2));
+        }
+    }
+
+    // Close the input file
+    inputFile.close();
+
+    return params;
+}
+
+
+void console_cloud_to_skel(MeshEditor* me, const std::vector<std::string> & args)
+{
+    // Remove any existing graph/object
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    g.clear();
+    
+    // Read parameters from the "input.txt" file
+    Parameters params = readParametersFromFile();
+
+    // Call the function to process and control output the parameters
+    processParameters(params);
+    
+    // Build a graph from the read in point cloud
+    me->active_visobj().get_graph() = Geometry::graph_from_points(params.pathToPointCloud, params.radConnect, params.nClosest);
+    
+    // Refitting the graph to the window size
+    auto [c,r] = approximate_bounding_sphere(g);
+    me->refit(c,r);
+    
+    
+}
+
+
 void console_clear_graph(MeshEditor* me, const std::vector<std::string> & args)
 {
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
@@ -2464,6 +2548,18 @@ void console_surfacemesh_cyl(MeshEditor* me, const std::vector<std::string> & ar
     me->save_active_mesh();
     graph_to_mesh_cyl(g, m, fudge);
 }
+
+void console_error_basic(MeshEditor* me, const std::vector<std::string> & args)
+{
+    double root_width = console_arg(args, 0, 0.5);
+    double delta = console_arg(args, 1, 2.0);
+    double filter = console_arg(args, 2, 0);
+//    double s = console_arg(args, 0, 1);
+    Geometry::AMGraph3D& g = me->active_visobj().get_graph();
+    Manifold& m = me->active_mesh();
+    error_function(g, m, root_width, delta,filter);
+}
+
 // ---------------------------------
 
 
@@ -2572,6 +2668,7 @@ void console_surfacemesh_cyl(MeshEditor* me, const std::vector<std::string> & ar
         register_console_function("test", console_test, "Test some shit");
         
         //--------- Edits Helen --------
+        register_console_function("graph.cloud_to_skel",console_cloud_to_skel,"");
         register_console_function("graph.0_clear",console_clear_graph,"");
         register_console_function("graph.00_save",console_save_graph,"");
         register_console_function("graph.01a_load_pts", console_points_to_graph, "");
@@ -2595,6 +2692,7 @@ void console_surfacemesh_cyl(MeshEditor* me, const std::vector<std::string> & ar
         register_console_function("graph.16b_local_da_vinci", console_local_da_vinci, "");
         register_console_function("graph.17a_surfacemesh_iso", console_surfacemesh_iso, "");
         register_console_function("graph.17b_surfacemesh_cyc", console_surfacemesh_cyl, "");
+        register_console_function("graph.18_error_basic", console_error_basic, "");
         //------------------------------
         
         selection_mode.reg(theConsole, "selection.mode", "The selection mode. 0 = vertex, 1 = halfedge, 2 = face");

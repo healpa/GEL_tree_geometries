@@ -173,10 +173,10 @@ namespace Geometry {
         int count = 0;
         for(auto n : g2.node_ids())
            {
-               float nb = g2.neighbors(n).size();
-               if(nb <= 5) {count++; g2.remove_node(n); } //5> fjerne
+               float nb = g2.neighbors(n).size(); // neighbors return the NodeIDs of nodes adjacent to a given node
+               if(nb <= 5) {count++; g2.remove_node(n); }
            }
-        std::cout << "Number of removed nodes: " << count << std::endl;
+        std::cout << "Number of removed points: " << count << std::endl;
         g = g2;
         
     }

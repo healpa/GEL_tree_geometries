@@ -3022,10 +3022,7 @@ AMGraph3D rad_per_node(Geometry::AMGraph3D& g){
     vector<double> dist_per_point(point_cloud.size(), 0); // to store distance of each PC point to its nearest edge
     vector<NodeID> point_belong_to_node(point_cloud.size(), 0); // assigned NodeID for each point
     
-    //for attempt to avoid 'disks'
-    vector<double> included_distances; // Distances smaller than 0.2
-    vector<pair<NodeID, double>> excluded_distances; // NodeIDs and distances >= 0.2
-
+    
     
     //for every PC point
     for(int i = 0; i < point_cloud.size(); i++){
@@ -3052,7 +3049,7 @@ AMGraph3D rad_per_node(Geometry::AMGraph3D& g){
                 auto lp = ls.sqr_distance(position); // returns LinProj object
                 auto distance = lp.sqr_dist; // squared distance between two node(ID)s (not necessarily connected)
 
-                if(sqrt(distance) < min_distance){ // if current distance smaller than the ones found before
+                if(sqrt(distance) < min_distance){ // if current distance smaller than the ones found before (take the square root again!)
                     min_distance = sqrt(distance);      // store as min. distance
                     closest_node = j.v;                 // store the currently considered node of the 4 nearest as the nearest node to that PC point
                 }
@@ -3074,10 +3071,10 @@ AMGraph3D rad_per_node(Geometry::AMGraph3D& g){
         point_belong_to_node[i] = closest_node;  // assigned NodeID for each PC point (assigned NodeID = the one of the initial four that the nearest edge originates from)
     }
     
-    cout << "Distances smaller than 0.2 assigned to nodes: " << included_distances.size() << endl;
-    cout << "Distances >= 0.2 stored in the excluded_distances vector: " << excluded_distances.size() << endl;
-    cout << "\n FINDING MEDIAN FOR EACH SINGLE EDGE" << endl;
-    
+//    cout << "Distances smaller than 0.2 assigned to nodes: " << included_distances.size() << endl;
+//    cout << "Distances >= 0.2 stored in the excluded_distances vector: " << excluded_distances.size() << endl;
+//    cout << "\n FINDING MEDIAN FOR EACH SINGLE EDGE" << endl;
+
     Util::AttribVec<NodeID, float> median_dist_branch(g.no_nodes(),0); // for storing the median distance (one float value per NodeID)
     
     for(auto i: g.node_ids()){ //for every node in the skeleton
@@ -3096,7 +3093,7 @@ AMGraph3D rad_per_node(Geometry::AMGraph3D& g){
         sort(median_find.begin(),median_find.end());
         float median = 0;
         if(median_find.size() > 0){
-            median = median_find[ceil(median_find.size()/2)]; // with /5 instead of /2 -> 20% QUANTILE instead of median to compensate for the overestimation of the small branches (due to twigs missing in the skeleton)
+            median = median_find[ceil(median_find.size()/5)]; // with /5 instead of /2 -> 20% QUANTILE instead of median to compensate for the overestimation of the small branches (due to twigs missing in the skeleton)
         }
         
         //  median distance for the current node i is stored (or in this case 20% quantile)
@@ -3146,16 +3143,13 @@ AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta){
         double u = Q.front();
         Q.pop();
         double no_NB = g.neighbors(u).size();
-        //cout << no_NB << " no of NB" << endl;
-        //cout << "This vertex have been seen; " << seen[u] << endl;
-        //g.node_color[u] = Vec3f(1,0,0);
         
         ///STOPPED HERE WITH MODIFYING
         
-        if(no_NB == 2){ //straight?
+        if(no_NB == 2){ //straight branch
             
             //Visited this node, so we will backtrack
-            if(seen[u] == 0){
+            if(seen[u] == 0){ //if not seen it would be -1
                 cout << "BT straight branch " << endl;
                 Q.push(pred[u]);
                 weight[u] += walking;    //SO IN THEROY IT SHOULD NOT BE ZERO FOR THE STEM?!?!
@@ -3179,14 +3173,14 @@ AMGraph3D width_assign(Geometry::AMGraph3D& g, double root_width, double delta){
                 }
                 
    
-                cout << "Going stright " << endl;
+                cout << "Going straight " << endl;
                 pred[next] = u;
                 next_node.push_back(next);
                     
                 seen[u] = 0;
    
                 //CYCLE DONT HOP BACK, BUT WALK BACK
-                if(check == no_NB){ //have found a cycle        ///// OBS was else if
+                if(check == no_NB){ //have found a cycle  -> should not exist after we created a spanning tree      ///// OBS was else if
                     seen[u] = 1;
                     walking += 1;
                     Q.push(pred[u]);
@@ -3712,6 +3706,337 @@ AMGraph3D width_assign_local_delta(Geometry::AMGraph3D& g, double root_width){ /
     return g;
     
 }
+
+ 
+Util::AttribVec<NodeID, float> rad_per_node_error(Geometry::AMGraph3D& g){
+    
+// CLEANUP SKELETON
+    //Delete all lonely nodes in the skeleton
+    for(auto t: g.node_ids()){
+        double no_NB = g.neighbors(t).size();
+        if(no_NB == 0){
+            g.remove_node(t);
+            }
+        }
+    
+//BUILD KDTree of the tree skeleton (so we can use m_closest later on)
+        cout << "BUILDINGS KDTREE" << endl;
+        KDTree<Vec3d, AMGraph3D::NodeID> tree_skeleton;
+        for(auto i = 0; i < g.no_nodes(); i++ ) {
+            tree_skeleton.insert(g.pos[i], i);
+        }
+        tree_skeleton.build();
+       
+    
+//LOADING THE POINT CLOUD (PC)
+    cout << "LOADING POINT CLOUD (PC)" << endl;
+    srand(0);
+    string fn = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+    ifstream f(fn.c_str());
+    string str;
+    getline(f, str);
+    vector<Vec3d> point_cloud;
+    while(f) {
+        string str;
+        getline(f, str);
+        istringstream istr(str);
+        double x,y,z;
+        istr >> x >> y >> z;
+        if(1) {
+            Vec3d p = Vec3d(x,y,z);
+            if(!isnan(p[0])){
+                point_cloud.push_back(p);
+            }
+        }
+    }
+    cout << "Number of points in point cloud: " << point_cloud.size() << endl;
+
+    
+    int no_pointcloud_points = point_cloud.size(); // number of points in the point cloud
+    vector<double> dist_per_point(point_cloud.size(), 0); // to store distance of each PC point to its nearest edge
+    vector<NodeID> point_belong_to_node(point_cloud.size(), 0); // assigned NodeID for each point
+    
+    
+    
+    //for every PC point
+    for(int i = 0; i < point_cloud.size(); i++){
+        int no_closest = 4;
+        auto position = point_cloud[i];
+        double rad_dist = 1;
+        
+        // find the 4 closest nodes (within certain radius) (returns vector)
+        auto closest_skel_nodes = tree_skeleton.m_closest(no_closest, position, rad_dist);
+        
+        double min_distance = 1000;
+        NodeID closest_node = 0;
+        
+        
+        // for each of the 4 nearest nodes
+        for(const auto& j: closest_skel_nodes){
+            
+            // go through adjacent nodes (of the 4 nearest nodes)
+            for(auto n: g.neighbors(j.v)){ // 'neighbors' returns NodeIDs of all adjacent nodes to the current node ; j = one of the 4 nearest nodes, n = one of the adjacent nodes ; j.v = just for variable format?
+    
+                LineSegment ls(g.pos[j.v], g.pos[n]); //'LineSegment' returns the distance between the current node and the currently considered adjacent node -> = edge
+
+                //calculate squared distance between a current PC point and the currently considered edge
+                auto lp = ls.sqr_distance(position); // returns LinProj object
+                auto distance = lp.sqr_dist; // squared distance between two node(ID)s (not necessarily connected)
+
+                if(sqrt(distance) < min_distance){ // if current distance smaller than the ones found before (take the square root again!)
+                    min_distance = sqrt(distance);      // store as min. distance
+                    closest_node = j.v;                 // store the currently considered node of the 4 nearest as the nearest node to that PC point
+                }
+            }
+            
+           
+        }
+        //attempt to avoid 'disks'
+//        if (min_distance < 0.2) { // Check if the distance is smaller than 0.2
+//                    dist_per_point[i] = min_distance; // Assign to the node
+//                    point_belong_to_node[i] = closest_node;
+//                    included_distances.push_back(min_distance); // Store in the included_distances vector
+//                } else {
+//                    // Store the NodeID and distance in the excluded_distances vector
+//                    excluded_distances.push_back(make_pair(point_belong_to_node[i], min_distance));
+//                }
+        
+        dist_per_point[i] = min_distance;        // closest distances to the nearest edges of each PC point
+        point_belong_to_node[i] = closest_node;  // assigned NodeID for each PC point (assigned NodeID = the one of the initial four that the nearest edge originates from)
+    }
+    
+//    cout << "Distances smaller than 0.2 assigned to nodes: " << included_distances.size() << endl;
+//    cout << "Distances >= 0.2 stored in the excluded_distances vector: " << excluded_distances.size() << endl;
+//    cout << "\n FINDING MEDIAN FOR EACH SINGLE EDGE" << endl;
+
+    Util::AttribVec<NodeID, float> median_dist_branch(g.no_nodes(),0); // for storing the median distance (one float value per NodeID)
+    
+    for(auto i: g.node_ids()){ //for every node in the skeleton
+        
+        vector<float> median_find;
+        
+        for(int j = 0; j < no_pointcloud_points; j++){ //go through all PC points (probably this could be more efficient somehow?!)
+            
+            //check whether the point j belongs to the current node i
+            if(point_belong_to_node[j] == i){
+                //If the point belongs to the node, its distance to its nearest edge is added to the median_find vector
+                median_find.push_back(dist_per_point[j]);
+            }
+        }
+        //sort distances
+        sort(median_find.begin(),median_find.end());
+        float median = 0;
+        if(median_find.size() > 0){
+            median = median_find[ceil(median_find.size()/5)]; // with /5 instead of /2 -> 20% QUANTILE instead of median to compensate for the overestimation of the small branches (due to twigs missing in the skeleton)
+        }
+        
+        //  median distance for the current node i is stored (or in this case 20% quantile)
+        median_dist_branch[i] = median;
+       g.node_color[i][1] = median;
+    }
+    
+    cout << "median dist per node: " << endl;
+    for(int i = 0; i < median_dist_branch.size(); i++){
+
+       cout << median_dist_branch[i] <<" ";
+        g.node_color[i][1] = median_dist_branch[i]; // assigned thickness is stored in the color attribute of the node
+
+    }
+    
+    return median_dist_branch;
+    
+}
+
+double smooth_step2(double tmin, double tmax, double _t) {
+    // Normalize _t to the range [0, 1]
+    double t = (_t - tmin) / (tmax - tmin);
+    
+    // Clamp the value of t to the range [0, 1]
+    t = min(1.0, max(0.0, t));
+    
+    // Apply  smooth step interpolation formula -> the same that is used in iso surface reconstruction
+    return 3 * t * t - 2 * t * t * t;
+}
+
+void error_function(Geometry::AMGraph3D& g, HMesh::Manifold& m, double root_width, double delta, int filter){
+    
+    //loading the point cloud as a vector (to proceed through all the points)
+    srand(0);
+    string fn = "/Users/healpa/Documents/git/GEL_tree_geometries/data/point_clouds/WinterTree_pts_clean_filtered.off";
+    ifstream f(fn.c_str());
+    string str;
+    getline(f, str);
+    getline(f, str);
+
+    vector<Vec3d> point_cloud;
+
+    while(f) {
+        string str;
+        getline(f, str);
+        istringstream istr(str);
+        double x,y,z;
+        istr >> x >> y >> z;
+        if(1) {
+            Vec3d p = Vec3d(x,y,z);
+            if(!isnan(p[0])){
+                point_cloud.push_back(p);
+            }
+        }
+    }
+    cout << "amount of points in point cloud: " << point_cloud.size() << endl;
+    
+    
+    //Loadint the point cloud as a graph (to use the functions associated with a graph)
+    AMGraph3D gn;
+      while(f) {
+          string str;
+          getline(f, str);
+          istringstream istr(str);
+          double x,y,z;
+          istr >> x >> y >> z; //if(1)
+          if(1) {
+              Vec3d p = Vec3d(x,y,z);
+              if(!isnan(p[0])) {
+                  gn.add_node(p);
+              }
+              else
+                  cout << "nan node not inserted in graph: "  << endl;
+          }
+      }
+
+
+    //BUILD KDTree of the skeleton nodes (so function m_closest can be used)
+    cout << "Build KDTree" << endl;
+    KDTree<Vec3d, AMGraph3D::NodeID> tree_skeleton;
+    for(auto i = 0; i < g.no_nodes(); i++ ) {
+        g.node_color[i] = Vec3f(1,0,0);
+        tree_skeleton.insert(g.pos[i], i);
+    }
+    tree_skeleton.build();
+
+    //FINDING DISTANCE BETWEEN THE PC POINTS (Vector) AND THE CLOSEST SKELETON EDGE (/NODES -> KDTree)
+    
+    //Check for assigned rad, found in g.node_color[i][1]
+    cout << "Load the assigned thicknesses" << endl;
+    auto thickness_vec = rad_per_node_error(g);
+    double sum_errors = 0;
+
+    for(int i = 0; i < point_cloud.size(); i++){
+        // going through the point cloud points, finding clostest 4 nodes
+        int no_closest = 4;
+        auto position = point_cloud[i];
+        double rad_dist = 1;
+        auto closest_skel_node = tree_skeleton.m_closest(no_closest, position, rad_dist);
+        double min_distance = 1000;
+        NodeID closest_node = 0;
+        NodeID closest_point_cloud_node = 0;
+        float assigned_width = 0;
+
+        // finding the nearest edge to the PC point
+        for(const auto& j: closest_skel_node){
+            for(auto n: g.neighbors(j.v)){
+
+                //Find all the outgoing edges
+                LineSegment ls(g.pos[j.v], g.pos[n]);
+
+                //Find distance between point and line
+                auto lp = ls.sqr_distance(position); // return LineProj object
+                auto distance = lp.sqr_dist;
+
+                if(distance < min_distance){
+                    min_distance = distance;
+                    closest_node = j.v;
+                    closest_point_cloud_node = i;
+
+                    //Finding the assigned width at this linesegment
+                    auto rad_j = thickness_vec[j.v];
+                    auto rad_NB = thickness_vec[n];
+
+                    //Interpolation of radius along the edge
+                    auto t = smooth_step2(0.0, 1.0, lp.t);  // t is between 0 and 1
+                    assigned_width = rad_j * (1.0 - t) + rad_NB * t;
+
+                }
+            }
+        }
+
+        //Add the difference squared to a sum variable
+        auto error = pow(sqrt(min_distance) - assigned_width,2.0);
+        
+        if(filter == 0){
+            double outlier_value = 0.0049;
+            
+            //Only count the error if it is considered as an outlier, ie. less than a specific error value given below
+            if(error < outlier_value){
+                sum_errors += error;
+            }
+            
+            // slows down the code considerably!
+            //cout << "Vector length: " << sqrt(min_distance) << " Ass_width: " << assigned_width << " error: " << pow(sqrt(min_distance) - assigned_width,2.0) << endl;
+
+            if(error < 0.0001){ //0-1 cm
+                gn.node_color[closest_point_cloud_node] = Vec3f(0,0,1);
+            }
+            else if(0.0004 > error && error > 0.0001){//1-2cm
+                gn.node_color[closest_point_cloud_node] = Vec3f(0,1,0);
+            }
+            else if( 0.0049 > error && error > 0.0004){ //2-7cm
+                gn.node_color[closest_point_cloud_node] = Vec3f(1,0,0);
+            }
+            //The points with an error bigger than this, will be "removed" from the point cloud / dont count towards the error
+            else if(error > outlier_value){
+                gn.node_color[closest_point_cloud_node] = Vec3f(0,0,0);
+            }
+        }
+        
+        if(filter == 1){
+            double outlier_value = 0.005;
+            
+            //Only count the error if it is considered as an outlier, ie. less than a specific error value given below
+            if(error < outlier_value){
+                sum_errors += error;
+            }
+            cout << "Vector length: " << sqrt(min_distance) << " Ass_width: " << assigned_width << " error: " << pow(sqrt(min_distance) - assigned_width,2.0) << endl;
+
+            if(error < 0.000125){
+                gn.node_color[closest_point_cloud_node] = Vec3f(0,0,1);
+
+            }
+            else if(0.00025 > error && error > 0.000125){
+                gn.node_color[closest_point_cloud_node] = Vec3f(0,1,0);
+
+            }
+            else if( 0.005 > error && error > 0.00025){
+                gn.node_color[closest_point_cloud_node] = Vec3f(1,0,0);
+
+            }
+            //The points with an error bigger than this, will be "removed" from the point cloud / dont count towards the error
+            else if(error > outlier_value){
+                gn.node_color[closest_point_cloud_node] = Vec3f(0,0,0);
+
+            }
+        }
+        
+    }
+
+    //Take the square root of the sum_error
+    auto final_total_error = sqrt(sum_errors);
+
+    cout << "Final total error: " << final_total_error << endl;
+    
+    g = gn;
+    
+
+
+}
+
+
+
+
+
+
+
+
 
 }
 
