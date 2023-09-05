@@ -125,7 +125,7 @@ AMGraph3D graph_from_points(const string& file_name, double rad, int N_closest)
 //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     
     tree.build();
-    cout << "Connecting nodes ..." << endl;
+    cout << "Connecting point cloud points to graph ..." << endl;
     for(auto n : g.node_ids())
     {
         auto nbors = tree.m_closest(N_closest, g.pos[n], rad);

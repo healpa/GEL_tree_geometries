@@ -349,6 +349,8 @@ NodeSetVec maximize_node_set_vec(AMGraph3D &g, const NodeSetVec &_node_set_vec) 
 pair<AMGraph3D, Util::AttribVec<AMGraph::NodeID, AMGraph::NodeID>>
 skeleton_from_node_set_vec(AMGraph3D &g, const NodeSetVec &_node_set_vec, bool merge_branch_nodes,
                            int smooth_steps) {
+    
+    cout << "Creating skeleton from local seperators ... " << endl;
     // First expand the node_set_vec so that all nodes are assigned.
     NodeSetVec node_set_vec = maximize_node_set_vec(g, _node_set_vec);
     //    color_graph_node_sets(g, node_set_vec);
@@ -482,6 +484,10 @@ skeleton_from_node_set_vec(AMGraph3D &g, const NodeSetVec &_node_set_vec, bool m
     for (auto n: skel.node_ids())
         skel.node_color[n][1] = node_size[n];
     
+    cout << "Finished creating skeleton from local seperators." << endl;
+    skel.cleanup();
+    cout << "Number of created edges: " << skel.no_edges() << endl;
+    cout << "Number of created nodes: " << skel.no_nodes() << endl;
     return make_pair(skel, skel_node_map);
 }
 
@@ -845,6 +851,8 @@ Separator local_separator(const AMGraph3D &g, NodeID n0, double quality_noise_le
 
 NodeSetVec local_separators(AMGraph3D &g, SamplingType sampling, double quality_noise_level, int optimization_steps,
                             uint advanced_sampling_threshold) {
+    
+    cout << "Finding local separators ... " << endl;
     
     // Because we are greedy: all cores belong to this task!
     const int CORES = thread::hardware_concurrency();
@@ -1424,7 +1432,7 @@ AMGraph3D bottom_node(Geometry::AMGraph3D& g){
 
 
 NodeID bottom_node_return(Geometry::AMGraph3D& g){
-    cout << "** bottom_node_return function **" << endl;    //Fnding z-values and the lowest edges
+    //cout << "** bottom_node_return function **" << endl;    //Finding z-values and the lowest edges
     
     vector<double> z_values;
     vector<double> z_values_low;
@@ -1491,14 +1499,14 @@ NodeID bottom_node_return(Geometry::AMGraph3D& g){
     cout << "root_node: " << root_node << endl;
     
     
-    cout << "** finished bottom_node_return function **" << endl;
+    //cout << "** finished bottom_node_return function **" << endl;
     return root_node;
 }
 
 
 //Find distances to all nodes
 pair<AttribVec<NodeID, int>,AttribVec<NodeID, NodeID>> distance_to_all_nodes(Geometry::AMGraph3D& g){
-    cout << "** distance to all nodes function **" << endl;
+    // cout << "** distance to all nodes function **" << endl;
     //        NodeID s = skel_root_node(g);  //for branch 22
     NodeID s = bottom_node_return(g); // for normal
     NodeID next;
@@ -1634,7 +1642,7 @@ pair<AttribVec<NodeID, int>,AttribVec<NodeID, NodeID>> distance_to_all_nodes(Geo
             
         }
     }
-    cout << "** finished distance to all nodes function **" << endl;
+    // cout << "** finished distance to all nodes function **" << endl;
     return make_pair(dist,pred);
 }
 
@@ -1980,10 +1988,10 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
     }
     
     
-    cout << "_____________________________________" << endl;
-    cout << "The ave dist is: " <<  ave_dist_total/no_connections << endl;
-    cout << " " << endl;
-    sort(median_dist.begin(),median_dist.end());
+    //cout << "_____________________________________" << endl;
+    //cout << "The ave dist is: " <<  ave_dist_total/no_connections << endl;
+    //cout << " " << endl;
+    //sort(median_dist.begin(),median_dist.end());
     //if(median_dist.size() != 0){
     //cout << "The median is: " << median_dist[(floor(median_dist.size()/2))] <<endl;
     //cout << " " << endl;
@@ -1999,8 +2007,9 @@ AMGraph3D attach_branches(Geometry::AMGraph3D& g,  double connect_dist, double a
 
 
 
-AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,  double angle_straight, double angle_complex){
+AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double connect,  double angle_straight, double angle_complex){
     
+    cout << "Attaching loose branches to the skeleton ... " << endl;
     //Vector of distances that we will allow
     queue<double> distance_check;
     distance_check.push(0.1); //0.261
@@ -2016,7 +2025,7 @@ AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,
         
         double connect = distance_check.front();
         distance_check.pop();
-        cout << "current connection distance: " << connect << endl;
+        //cout << "current connection distance: " << connect << endl;
         
         //Get distance vector for the graph
         auto a_pair = distance_to_all_nodes(g);
@@ -2068,15 +2077,17 @@ AMGraph3D attach_branches_iteratively(Geometry::AMGraph3D& g, double root_width,
             
         }
         
-        cout << "______________________________" << endl;
-        cout << "NEW DISTANCE" << endl;
+        //cout << "______________________________" << endl;
+       // cout << "NEW DISTANCE" << endl;
         
         
         
     }
-    cout << "_*_*_*_**_*_*" << endl;
-    cout << "IN TOTAL WE DID " << iterations << " ITERATIONS" << endl;
+    //cout << "_*_*_*_**_*_*" << endl;
+    //cout << "IN TOTAL WE DID " << iterations << " ITERATIONS" << endl;
     
+    
+    cout << "Finished attaching loose branches to the skeleton ... " << endl;
     return clean_graph(g);
     
 }
@@ -2160,10 +2171,13 @@ double calculatePercentageNotConnected(Geometry::AMGraph3D& g) {
     tree_skeleton.build();
     tree_branches.build();
     
-    cout << "loose nodes " << loose_nodes << endl;
-    cout << "total number " << g.no_nodes() << endl;
+    
+    
     
     double percentage_not_connected = (static_cast<float>(loose_nodes) / g.no_nodes()) * 100.0f;
+    cout << "loose nodes: " << loose_nodes << endl;
+    cout << "percentage of loose nodes: " << percentage_not_connected << endl;
+    
     return percentage_not_connected;
 }
 
@@ -2195,6 +2209,7 @@ double two_point_distance_XY(Vec3d& v1, Vec3d& v2){
 AMGraph3D create_spanning_tree(Geometry::AMGraph3D& g){ //, double root_width
     //    DISCONNECT CIRCLES AT THE POINT FURTHEST AWAY FROM CENTER OF MASS IN (X,Y)-PLAN
     
+    cout << "Creating a spanning tree ... " << endl;
     auto center = bottom_node_return(g);
     int count_broken_cycles = 0;
     

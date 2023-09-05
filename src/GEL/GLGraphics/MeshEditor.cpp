@@ -2033,7 +2033,7 @@ namespace GLGraphics {
 
 // ---------- Edits Helen ----------
 
-// ALL IN ONE FUNCTION to go from a point cloud to a reconnected and spannin skeleton
+// ALL IN ONE FUNCTION to go from a point cloud to a reconnected and spanning skeleton
 
 //All for reading in the input.txt file
 struct Parameters {
@@ -2042,21 +2042,30 @@ struct Parameters {
     double reconnectingAngleBranching;
     int nClosest;
     double radConnect;
+    int minNb;
+    int satLevels;
+    double contrThres;
 };
 
 void processParameters(const Parameters& params) {
-    // more parameters to add: number of NB to connect to, max. radius for connections, levels for saturating, minimum number of NB in the graph (otherwise considered outlier, distance threshold for graph_edge_contract
     string filePath = params.pathToPointCloud;
     double reconnectingAngleStraight = params.reconnectingAngleStraight;
     double reconnectingAngleBranching = params.reconnectingAngleBranching;
     int nClosest = params.nClosest;
     double radConnect = params.radConnect;
+    int minNb = params.minNb;
+    int satLevels = params.satLevels;
+    double contrThres = params.contrThres;
     
     std::cout << "Path to point cloud: " << filePath << std::endl;
     std::cout << "Number of neighbouring points to connect when creating graph: " << nClosest << std::endl;
     std::cout << "Maximum radius for connecting points: " << radConnect << std::endl;
+    std::cout << "Minimum number of neighbours in the graph - otherwise removed (considered an outlier): " << minNb << std::endl;
+    std::cout << "Saturation Levels (number of 'hops'): " << satLevels << std::endl;
+    std::cout << "Threshold for contracting edges [m]: " << contrThres << std::endl;
     std::cout << "Reconnecting angle for complex branches: " << reconnectingAngleBranching << std::endl;
     std::cout << "Reconnecting angle for straight branches: " << reconnectingAngleStraight << std::endl;
+    
     
 }
 
@@ -2084,7 +2093,14 @@ Parameters readParametersFromFile() {
             params.nClosest = std::stod(line.substr(line.find(":") + 2));
         } else if (line.find("maximum radius for connecting [m]:") != std::string::npos) {
             params.radConnect = std::stod(line.substr(line.find(":") + 2));
+        } else if (line.find("min. number of neighbours - otherwise removed (outlier):") != std::string::npos) {
+            params.minNb = std::stod(line.substr(line.find(":") + 2));
+        } else if (line.find("saturation levels:") != std::string::npos) {
+            params.satLevels = std::stod(line.substr(line.find(":") + 2));
+        } else if (line.find("threshold for contracting edges [m]:") != std::string::npos) {
+            params.contrThres = std::stod(line.substr(line.find(":") + 2));
         }
+        
     }
 
     // Close the input file
@@ -2100,11 +2116,15 @@ void console_cloud_to_skel(MeshEditor* me, const std::vector<std::string> & args
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
     g.clear();
     
+    std::cout << "\n READING IN THE INPUT PARAMETERS ... : " << std::endl;
+    
     // Read parameters from the "input.txt" file
     Parameters params = readParametersFromFile();
 
     // Call the function to process and control output the parameters
     processParameters(params);
+    
+    std::cout << "\n CREATING THE GRAPH... : " << std::endl;
     
     // Build a graph from the read in point cloud
     me->active_visobj().get_graph() = Geometry::graph_from_points(params.pathToPointCloud, params.radConnect, params.nClosest);
@@ -2113,7 +2133,56 @@ void console_cloud_to_skel(MeshEditor* me, const std::vector<std::string> & args
     auto [c,r] = approximate_bounding_sphere(g);
     me->refit(c,r);
     
+    // Remove outliers in the graph
+    remove_outliers_graph(me->active_visobj().get_graph(), params.minNb);
     
+    // Saturate the graph
+    double dist_frac = 1.0001;
+    double rad = 0.05;
+    saturate_graph(me->active_visobj().get_graph(), params.satLevels, dist_frac, rad);
+    
+    
+    // TESTED AND WORKS FINE UNTIL HERE!
+    
+    // Contract edges (in graph or skeleton?)
+    graph_edge_contract(me->active_visobj().get_graph(), params.contrThres);
+
+    // Prune
+    prune(me->active_visobj().get_graph());
+    
+    // VERY SLOW FROM HERE
+    
+    // finding local seperators
+    Geometry::SamplingType sampling = Geometry::SamplingType::None;  // Set the desired SamplingType value here
+    double quality_noise_level = console_arg(args, 0, 0.09);
+    int optimization_steps = console_arg(args, 1, 0);
+    int advanced_sampling_threshold = console_arg(args, 2, 64);
+    Geometry::NodeSetVec node_set_vec = local_separators(g, sampling, quality_noise_level, optimization_steps, advanced_sampling_threshold);
+    
+    // creating a skeleton for the found LS
+    int merge = console_arg(args, 0, 1);
+    std::pair<Geometry::AMGraph3D, Util::AttribVec<Geometry::AMGraph3D::NodeID, Geometry::AMGraph3D::NodeID>> result =
+        skeleton_from_node_set_vec(g, node_set_vec, merge);
+    g = result.first; // assign the updated graph to the original reference
+
+
+
+    // cleaning up the root (and find root node)
+    g  = bottom_node(g);
+
+    // calculation fraction of not connected nodes before reconnecting
+    double percentageNotConnected1 = calculatePercentageNotConnected(g);
+    
+    // reconnecting branches in the skeleton
+    double connect = 0.5; //maximum connection distance
+    g = attach_branches_iteratively(g, connect, params.reconnectingAngleStraight, params.reconnectingAngleBranching);
+    
+    // calculation fraction of not connected nodes after reconnecting
+    double percentageNotConnected2 = calculatePercentageNotConnected(g);
+    
+    
+    //creating a spanning tree
+    g = create_spanning_tree(g);
 }
 
 
@@ -2261,7 +2330,7 @@ void console_graph_remove_outliers(MeshEditor* me, const std::vector<std::string
 
 
 void console_graph_saturate(MeshEditor* me, const std::vector<std::string> & args) {
-    int vt = 5;   // number of nearest vertices to be connected for saturation
+    int vt = 5;
     double dist_frac = 1.0001;
     double rad = 1e300;
     if (args.size() > 0) {
@@ -2270,12 +2339,12 @@ void console_graph_saturate(MeshEditor* me, const std::vector<std::string> & arg
         }
         catch (...) {
             // Invalid input, using default value
-            std::cout << "Invalid input for the number of nearest vertices to be connetced. Using default value 5." << std::endl;
+            std::cout << "Saturation levels. Using default value 5." << std::endl;
         }
     }
     else {
         // Prompt the user for input
-        std::cout << "Enter the value number of nearest vertices to be connected fo saturation (default: 5): ";
+        std::cout << "Enter the value number the levels of saturation (default: 5): ";
         std::cin >> vt;
     }
     
@@ -2383,7 +2452,7 @@ void console_color_loose_branches(MeshEditor* me, const std::vector<std::string>
 
 void console_connect_branches(MeshEditor* me, const std::vector<std::string> & args)
 {
-    double root_width = 0.5;
+    double connect = 0.5;
     std::string use_default;
     std::cout << "Do you want to use the default angles for considering nodes as possible connection nodes (straight: 130, complex 90)? (Y/N): ";
     std::cin >> use_default;
@@ -2407,7 +2476,7 @@ void console_connect_branches(MeshEditor* me, const std::vector<std::string> & a
     }
     
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
-    g = attach_branches_iteratively(g, root_width, angle_straight, angle_complex);
+    g = attach_branches_iteratively(g, connect, angle_straight, angle_complex);
 }
 
 
@@ -2532,7 +2601,7 @@ void console_local_da_vinci(MeshEditor* me, const std::vector<std::string> & arg
 
 void console_surfacemesh_iso(MeshEditor* me, const std::vector<std::string> & args) {
     float fudge = console_arg(args, 0, 0.0f);
-    size_t res = console_arg(args, 1, 32);
+    size_t res = console_arg(args, 1, 256); // 32 = resolution; // fudge to globally thicken
     float tau = console_arg(args, 2, 0.37f);
     Geometry::AMGraph3D& g = me->active_visobj().get_graph();
     Manifold& m = me->active_mesh();

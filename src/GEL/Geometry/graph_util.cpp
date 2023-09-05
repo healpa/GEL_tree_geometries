@@ -176,7 +176,7 @@ namespace Geometry {
                float nb = g2.neighbors(n).size(); // neighbors return the NodeIDs of nodes adjacent to a given node
                if(nb <= 5) {count++; g2.remove_node(n); }
            }
-        std::cout << "Number of removed points: " << count << std::endl;
+        std::cout << "Number of removed points in graph (considered outliers due to few neighbours): " << count << std::endl;
         g = g2;
         
     }
@@ -185,6 +185,7 @@ namespace Geometry {
     // ----------------------------
 
     void saturate_graph(AMGraph3D& g, int hops, double dist_frac, double rad) {
+        cout << "Saturating the graph..." << endl;
         AMGraph3D g2 = g;
         using NodeMap = std::map<NodeID, pair<int, double>>;
         for(NodeID n0: g.node_ids()) {
@@ -265,11 +266,12 @@ namespace Geometry {
         priority_queue<SkeletonPQElem> Q;
         
         // --------- Edits Helen ---------
+        std::cout << "Contracting edges... : " << std::endl;
         size_t numEdges = g.no_edges();
-        std::cout << "Number of edges before contracting" << numEdges << std::endl;
+        std::cout << "Number of edges before contracting: " << numEdges << std::endl;
         // -------------------------------
         
-        int cntr, countedges=0, total_work = 0;
+        int cntr, total_work = 0;
         do {
             Util::AttribVec<AMGraph::NodeID, int> touched(g.no_nodes(),0);
             cntr = 0;
@@ -302,8 +304,8 @@ namespace Geometry {
         
         // --------- Edits Helen ---------
         size_t numEdgesAfter = g.no_edges();
-        std::cout << "Number of contracted edges: " << countedges << std::endl;
-        std::cout << "Number of edges after contracting" << numEdgesAfter << std::endl;
+        std::cout << "Number of contracted edges: " << total_work << std::endl;
+        std::cout << "Number of edges after contracting: " << numEdgesAfter << std::endl;
         // -------------------------------
         
         return total_work;
@@ -412,6 +414,7 @@ namespace Geometry {
 
 
     void prune(Geometry::AMGraph3D& g) {
+        std::cout << "Pruning the graph... : " << std::endl;
         vector<NodeID> garbage;
         for(auto n: g.node_ids()) {
             auto N = g.neighbors(n);
@@ -428,6 +431,7 @@ namespace Geometry {
         for(auto n: garbage)
             g.remove_node(n);
         
+        std::cout << "Number of pruned edges: " << garbage.size() << std::endl;
         g = clean_graph(g);
     }
 
